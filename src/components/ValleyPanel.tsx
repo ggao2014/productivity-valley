@@ -6,8 +6,29 @@ import {
   useGameStore,
 } from '../core/gameStore'
 import { FRIENDSHIP_LABELS, ROMANCE_LABELS } from '../core/constants'
-import { NPC_DEFS } from '../core/npcs'
+import { NPC_DEFS, type NpcDef } from '../core/npcs'
 import { roomName } from '../core/economy'
+
+/** Yard / path spots — away from the house. Percent of scene. */
+const YARD_SPOTS: Array<{ left: string; top: string }> = [
+  { left: '14%', top: '72%' },
+  { left: '30%', top: '84%' },
+  { left: '48%', top: '78%' },
+  { left: '68%', top: '86%' },
+  { left: '86%', top: '70%' },
+  { left: '22%', top: '58%' },
+  { left: '78%', top: '58%' },
+  { left: '10%', top: '48%' },
+  { left: '90%', top: '50%' },
+  { left: '38%', top: '66%' },
+  { left: '62%', top: '64%' },
+  { left: '54%', top: '90%' },
+]
+
+function spotFor(id: string, index: number) {
+  const n = [...id].reduce((a, c) => a + c.charCodeAt(0), 0)
+  return YARD_SPOTS[(n + index * 3) % YARD_SPOTS.length]
+}
 
 export function ValleyPanel() {
   const rooms = useGameStore((s) => s.rooms)
@@ -19,26 +40,51 @@ export function ValleyPanel() {
   const visible = NPC_DEFS.filter((n) => npc[n.id]?.met)
   const atHome = visible.filter((n) => npc[n.id].livingAtHome)
   const outside = visible.filter((n) => !npc[n.id].livingAtHome)
+  const windowGuests = atHome.slice(0, 2)
+  const porchGuests = atHome.slice(2)
 
   return (
     <div className="panel">
       <div className="valley-scene" aria-label="山谷绘本场景">
         <div className="valley-sky" />
-        <div className="house">
+        <div className="valley-path" />
+        <span className="valley-label home">自家小屋</span>
+        <span className="valley-label yard">山谷小路</span>
+
+        <div className="house" aria-label="小屋，初始无人入住">
           <div className="house-roof" />
-          <div className="house-body">
-            <div className="house-window left" />
-            <div className="house-window right" />
+          <div className={`house-body${atHome.length ? ' has-company' : ''}`}>
+            <WindowSlot
+              side="left"
+              guest={windowGuests[0]}
+              onSelect={selectNpc}
+            />
+            <WindowSlot
+              side="right"
+              guest={windowGuests[1]}
+              onSelect={selectNpc}
+            />
             <div className="house-door" />
           </div>
         </div>
-        <div className="npc-row">
-          {[...atHome, ...outside].map((n) => (
+
+        {porchGuests.length > 0 && (
+          <div className="porch-row" aria-label="更多同住伴侣">
+            {porchGuests.map((n) => (
+              <NpcButton key={n.id} n={n} onSelect={selectNpc} compact />
+            ))}
+          </div>
+        )}
+
+        {outside.map((n, i) => {
+          const spot = spotFor(n.id, i)
+          return (
             <button
               key={n.id}
-              className="npc-chip"
+              className="npc-spot"
+              style={{ left: spot.left, top: spot.top }}
               onClick={() => selectNpc(n.id)}
-              aria-label={`查看${n.name}`}
+              aria-label={`山谷里的${n.name}`}
             >
               <span
                 className="npc-avatar"
@@ -48,12 +94,13 @@ export function ValleyPanel() {
               </span>
               <small>{n.name}</small>
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
       <p className="hint">
-        空床位 {beds} · 今日维护约 {maintenance} 金币。点小人培养感情；眷恋且有空房可邀请留下。
+        开局小屋是空的；人在<strong>山谷小路</strong>上。处到眷恋且有空房，才能请进窗边同住。
+        空床位 {beds} · 今日维护约 {maintenance} 金币。
       </p>
 
       <h2 className="section-title">小屋房间</h2>
@@ -68,6 +115,72 @@ export function ValleyPanel() {
         ))}
       </div>
     </div>
+  )
+}
+
+function WindowSlot({
+  side,
+  guest,
+  onSelect,
+}: {
+  side: 'left' | 'right'
+  guest?: NpcDef
+  onSelect: (id: string) => void
+}) {
+  if (!guest) {
+    return (
+      <div
+        className={`house-window ${side}`}
+        aria-label={`${side === 'left' ? '左' : '右'}窗空着`}
+      />
+    )
+  }
+  return (
+    <button
+      className={`house-window ${side} lit`}
+      onClick={() => onSelect(guest.id)}
+      aria-label={`窗边的${guest.name}`}
+      title={guest.name}
+    >
+      <span
+        className="window-face"
+        style={{ background: `${guest.color}55` }}
+      >
+        {guest.name.slice(0, 1)}
+      </span>
+    </button>
+  )
+}
+
+function NpcButton({
+  n,
+  onSelect,
+  compact,
+}: {
+  n: NpcDef
+  onSelect: (id: string) => void
+  compact?: boolean
+}) {
+  return (
+    <button
+      className="npc-chip"
+      onClick={() => onSelect(n.id)}
+      aria-label={n.name}
+      style={compact ? { width: 48 } : undefined}
+    >
+      <span
+        className="npc-avatar"
+        style={{
+          background: `${n.color}33`,
+          borderColor: n.color,
+          width: compact ? 40 : 48,
+          height: compact ? 40 : 48,
+        }}
+      >
+        {n.name.slice(0, 1)}
+      </span>
+      <small>{n.name}</small>
+    </button>
   )
 }
 
@@ -103,6 +216,7 @@ export function NpcSheet() {
         <p className="muted">{def.blurb}</p>
         <p className="muted">
           {def.prop} · {def.voice}
+          {npcState.livingAtHome ? ' · 现住在你家' : ' · 还在山谷里'}
         </p>
         <div className="stage">
           <em>友情 · {FRIENDSHIP_LABELS[f]}</em>
