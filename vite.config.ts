@@ -6,6 +6,14 @@ const base = process.env.VITE_BASE || '/'
 
 export default defineConfig({
   base,
+  preview: {
+    host: true,
+    allowedHosts: true,
+  },
+  server: {
+    host: true,
+    allowedHosts: true,
+  },
   plugins: [
     react(),
     VitePWA({
