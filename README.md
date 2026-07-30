@@ -1,2 +1,7 @@
 # productivity-valley
-productivity farming game
+
+绘本风生产力经营游戏：完成待办获得金币，布置小屋、邀请家人同住，远期扩展为小镇。
+
+## 文档
+
+- [产品设计文档](docs/DESIGN.md) — 愿景、核心循环、房间/居民经济、MVP 范围与小镇预留
