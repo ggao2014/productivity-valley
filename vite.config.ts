@@ -22,7 +22,7 @@ export default defineConfig({
       manifest: {
         name: 'Productivity Valley',
         short_name: '山谷',
-        description: '绘本风生产力乙游：完成待办，经营山谷，邀请伴侣',
+        description: '做待办，养山谷，交朋友',
         theme_color: '#5c7a5a',
         background_color: '#f3ebe0',
         display: 'standalone',

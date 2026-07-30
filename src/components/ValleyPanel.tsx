@@ -45,13 +45,13 @@ export function ValleyPanel() {
 
   return (
     <div className="panel">
-      <div className="valley-scene" aria-label="山谷绘本场景">
+      <div className="valley-scene" aria-label="山谷">
         <div className="valley-sky" />
         <div className="valley-path" />
-        <span className="valley-label home">自家小屋</span>
-        <span className="valley-label yard">山谷小路</span>
+        <span className="valley-label home">小屋</span>
+        <span className="valley-label yard">小路</span>
 
-        <div className="house" aria-label="小屋，初始无人入住">
+        <div className="house" aria-label="小屋">
           <div className="house-roof" />
           <div className={`house-body${atHome.length ? ' has-company' : ''}`}>
             <WindowSlot
@@ -69,7 +69,7 @@ export function ValleyPanel() {
         </div>
 
         {porchGuests.length > 0 && (
-          <div className="porch-row" aria-label="更多同住伴侣">
+          <div className="porch-row" aria-label="同住">
             {porchGuests.map((n) => (
               <NpcButton key={n.id} n={n} onSelect={selectNpc} compact />
             ))}
@@ -84,7 +84,7 @@ export function ValleyPanel() {
               className="npc-spot"
               style={{ left: spot.left, top: spot.top }}
               onClick={() => selectNpc(n.id)}
-              aria-label={`山谷里的${n.name}`}
+              aria-label={n.name}
             >
               <span
                 className="npc-avatar"
@@ -99,11 +99,10 @@ export function ValleyPanel() {
       </div>
 
       <p className="hint">
-        开局小屋是空的；人在<strong>山谷小路</strong>上。处到眷恋且有空房，才能请进窗边同住。
-        空床位 {beds} · 今日维护约 {maintenance} 金币。
+        人在小路上。超喜欢 + 有空房，就能请进来住。空床 {beds} · 今天维护 {maintenance}
       </p>
 
-      <h2 className="section-title">小屋房间</h2>
+      <h2 className="section-title">房间</h2>
       <div className="rooms-strip">
         {rooms.map((r) => (
           <div key={r.id} className="room-pill">
@@ -131,7 +130,7 @@ function WindowSlot({
     return (
       <div
         className={`house-window ${side}`}
-        aria-label={`${side === 'left' ? '左' : '右'}窗空着`}
+        aria-label="空窗"
       />
     )
   }
@@ -139,7 +138,7 @@ function WindowSlot({
     <button
       className={`house-window ${side} lit`}
       onClick={() => onSelect(guest.id)}
-      aria-label={`窗边的${guest.name}`}
+      aria-label={guest.name}
       title={guest.name}
     >
       <span
@@ -216,26 +215,26 @@ export function NpcSheet() {
         <p className="muted">{def.blurb}</p>
         <p className="muted">
           {def.prop} · {def.voice}
-          {npcState.livingAtHome ? ' · 现住在你家' : ' · 还在山谷里'}
+          {npcState.livingAtHome ? ' · 住在你家' : ' · 在外面'}
         </p>
         <div className="stage">
-          <em>友情 · {FRIENDSHIP_LABELS[f]}</em>
-          <em>爱情 · {ROMANCE_LABELS[r]}</em>
-          <em>今日互动 {npcState.interactionsToday}/3</em>
+          <em>友情 {FRIENDSHIP_LABELS[f]}</em>
+          <em>喜欢 {ROMANCE_LABELS[r]}</em>
+          <em>今日 {npcState.interactionsToday}/3</em>
         </div>
 
         <div className="actions">
           {!npcState.livingAtHome && (
             <>
               <button className="btn" onClick={() => chat(id)}>
-                闲聊
+                聊聊
               </button>
               <button className="btn secondary" onClick={() => heartTalk(id)}>
-                说心事
+                深聊
               </button>
               {!npcState.romanceUnlocked && (
                 <button className="btn secondary" onClick={() => unlockRomance(id)}>
-                  说出心意
+                  表白
                 </button>
               )}
               <button
@@ -243,17 +242,17 @@ export function NpcSheet() {
                 disabled={!inviteOk}
                 onClick={() => invitePartner(id)}
               >
-                邀请留下
+                请进来住
               </button>
             </>
           )}
           {npcState.livingAtHome && (
             <>
               <button className="btn" onClick={() => teaWith(id)}>
-                一起喝茶
+                喝茶
               </button>
               <button className="btn danger" onClick={() => separatePartner(id)}>
-                先分开住
+                搬出去
               </button>
             </>
           )}
@@ -293,14 +292,14 @@ function giftName(id: string) {
     ginger_soup: '热姜汤',
     wheat_cake: '麦香饼',
     chestnuts: '糖炒栗子',
-    wood_scrap: '好木料角',
+    wood_scrap: '小木块',
     osmanthus: '桂花糖',
-    orange_peel: '蜜渍橘皮',
-    trinket: '古怪小玩意',
-    cinnabar: '朱砂印泥',
-    bean_bag: '暖豆袋',
-    maltose: '麦芽糖块',
-    tea_cake: '陈年茶饼',
+    orange_peel: '蜜橘皮',
+    trinket: '小玩意',
+    cinnabar: '印泥',
+    bean_bag: '暖手豆袋',
+    maltose: '麦芽糖',
+    tea_cake: '茶饼',
     lotus_paper: '莲纸',
   }
   return map[id] ?? id

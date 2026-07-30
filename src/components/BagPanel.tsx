@@ -23,8 +23,8 @@ export function BagPanel() {
     <div className="panel">
       <h2 className="section-title">口袋</h2>
       <p className="hint">
-        金币 {coins} · 心意 {bond}/10 · 明日维护约 {maintenance}（
-        {partners.length} 人 × 约 {per}/人）
+        金币 {coins} · 精力 {bond}/10 · 明天花 {maintenance}
+        {partners.length > 0 ? `（${partners.length}人 ×${per}）` : ''}
       </p>
 
       {partners.length > 0 && (
@@ -37,7 +37,7 @@ export function BagPanel() {
       )}
 
       <h2 className="section-title" style={{ marginTop: 18 }}>
-        房间图鉴
+        房间
       </h2>
       <div className="shop-grid">
         {ROOM_DEFS.filter((r) => r.type !== 'living').map((r) => {
@@ -53,8 +53,8 @@ export function BagPanel() {
               <span className="muted">{r.blurb}</span>
               <span>
                 {r.cost} 金币
-                {owned ? ` · 已有 ${owned}` : ''}
-                {r.capacity ? ' · 可住人' : ''}
+                {owned ? ` · 已有${owned}` : ''}
+                {r.capacity ? ' · 可住' : ''}
               </span>
             </button>
           )
@@ -62,7 +62,7 @@ export function BagPanel() {
       </div>
 
       <h2 className="section-title" style={{ marginTop: 22 }}>
-        礼物小铺
+        礼物
       </h2>
       <div className="shop-grid">
         {GIFT_DEFS.map((g) => {
@@ -77,7 +77,7 @@ export function BagPanel() {
               <strong>{g.name}</strong>
               <span className="muted">{g.blurb}</span>
               <span>
-                {g.cost} 金币{qty ? ` · 袋中 ${qty}` : ''}
+                {g.cost} 金币{qty ? ` · 有${qty}` : ''}
               </span>
             </button>
           )
@@ -88,10 +88,10 @@ export function BagPanel() {
         <button
           className="btn danger"
           onClick={() => {
-            if (confirm('确定要重新铺开山谷吗？进度将清空。')) resetGame()
+            if (confirm('清空进度，重新开始？')) resetGame()
           }}
         >
-          重置进度
+          重置
         </button>
       </div>
     </div>

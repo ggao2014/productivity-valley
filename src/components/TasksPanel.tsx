@@ -16,15 +16,15 @@ export function TasksPanel() {
 
   return (
     <div className="panel">
-      <h2 className="section-title">今日待办</h2>
-      <p className="hint">做完小事，金币与心意会一起落下。</p>
+      <h2 className="section-title">待办</h2>
+      <p className="hint">做完可得金币和精力</p>
 
       <div className="list">
         {open.length === 0 && (
           <div className="row">
             <div className="row-main">
-              <strong>纸页还空着</strong>
-              <span className="muted">写下第一件小事吧</span>
+              <strong>还没有待办</strong>
+              <span className="muted">写一件吧</span>
             </div>
           </div>
         )}
@@ -33,9 +33,9 @@ export function TasksPanel() {
             <div className="row-main">
               <strong>{t.title}</strong>
               <span className="muted">
-                难度 {TASK_REWARDS[t.difficulty].label} · +
+                {TASK_REWARDS[t.difficulty].label} · +
                 {TASK_REWARDS[t.difficulty].coins} 金币 · +
-                {TASK_REWARDS[t.difficulty].bond} 心意
+                {TASK_REWARDS[t.difficulty].bond} 精力
               </span>
             </div>
             <button className="btn" onClick={() => completeTask(t.id)}>
@@ -59,7 +59,7 @@ export function TasksPanel() {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="写下一件小事"
+          placeholder="写点什么…"
           aria-label="待办标题"
         />
         <select
@@ -86,7 +86,6 @@ export function TasksPanel() {
               <div key={t.id} className="row done">
                 <div className="row-main">
                   <strong>{t.title}</strong>
-                  <span className="muted">已照亮一扇窗</span>
                 </div>
               </div>
             ))}

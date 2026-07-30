@@ -30,8 +30,8 @@ export const ROMANCE_THRESHOLDS: Record<RomanceStage, number> = {
   4: 200,
 }
 
-export const FRIENDSHIP_LABELS = ['路过', '相识', '好友', '挚友'] as const
-export const ROMANCE_LABELS = ['未开线', '好感', '心动', '眷恋', '同心'] as const
+export const FRIENDSHIP_LABELS = ['路过', '认识', '好友', '超要好'] as const
+export const ROMANCE_LABELS = ['还没有', '有点喜欢', '喜欢', '超喜欢', '在一起'] as const
 
 export const BASE_DAILY_COST = { food: 8, drink: 3, misc: 2 } as const
 
@@ -46,45 +46,45 @@ export interface RoomDef {
 export const ROOM_DEFS: RoomDef[] = [
   {
     type: 'living',
-    name: '起居室',
+    name: '客厅',
     cost: 0,
     capacity: 0,
-    blurb: '小屋的心。家人在这里歇脚。',
+    blurb: '大家待着玩的地方',
   },
   {
     type: 'bedroom',
     name: '卧室',
     cost: 80,
     capacity: 1,
-    blurb: '一张床，一扇窗，可以留人过夜。',
+    blurb: '可以住人',
   },
   {
     type: 'guest',
     name: '客房',
     cost: 100,
     capacity: 1,
-    blurb: '给愿意留下的客人备的被褥。',
+    blurb: '也可以住人',
   },
   {
     type: 'kitchen',
     name: '厨房',
     cost: 120,
     capacity: 0,
-    blurb: '吃的开销减两成。面粉味道会飘出来。',
+    blurb: '吃饭少花 20%',
   },
   {
     type: 'study',
     name: '书房',
     cost: 150,
     capacity: 0,
-    blurb: '完成中、大待办时金币多一成。',
+    blurb: '中/大任务多赚 10%',
   },
   {
     type: 'storage',
     name: '储藏间',
     cost: 60,
     capacity: 0,
-    blurb: '每人日用少花一文。',
+    blurb: '日用每人少花 1',
   },
 ]
 
@@ -102,83 +102,83 @@ export const GIFT_DEFS: GiftDef[] = [
     name: '热姜汤',
     cost: 15,
     likedBy: ['shendu'],
-    blurb: '渡口风硬，喝一口暖到胃。',
+    blurb: '暖暖的，沈渡爱喝',
   },
   {
     id: 'wheat_cake',
     name: '麦香饼',
     cost: 15,
     likedBy: ['qinghe'],
-    blurb: '刚出锅，脆边还在响。',
+    blurb: '脆脆的，青禾爱吃',
   },
   {
     id: 'chestnuts',
     name: '糖炒栗子',
     cost: 20,
     likedBy: ['guwan'],
-    blurb: '烫手，却忍不住连剥。',
+    blurb: '顾晚的最爱',
   },
   {
     id: 'wood_scrap',
-    name: '好木料角',
+    name: '小木块',
     cost: 25,
     likedBy: ['linchu'],
-    blurb: '纹理顺，适合练手。',
+    blurb: '给林初练手',
   },
   {
     id: 'osmanthus',
     name: '桂花糖',
     cost: 18,
     likedBy: ['jiangxiaoman'],
-    blurb: '甜得正经，不糊锅。',
+    blurb: '小满超爱甜的',
   },
   {
     id: 'orange_peel',
-    name: '蜜渍橘皮',
+    name: '蜜橘皮',
     cost: 18,
     likedBy: ['baizhi'],
-    blurb: '药香与甜缠在一起。',
+    blurb: '白芷会喜欢',
   },
   {
     id: 'trinket',
-    name: '古怪小玩意',
+    name: '小玩意',
     cost: 22,
     likedBy: ['chenshi'],
-    blurb: '说不清用途，但很有故事。',
+    blurb: '陈拾看见就双眼放光',
   },
   {
     id: 'cinnabar',
-    name: '朱砂印泥',
+    name: '印泥',
     cost: 30,
     likedBy: ['suweiming'],
-    blurb: '盖在话本末页刚刚好。',
+    blurb: '苏未名盖章用',
   },
   {
     id: 'bean_bag',
-    name: '暖豆袋',
+    name: '暖手豆袋',
     cost: 20,
     likedBy: ['yueqingshan'],
-    blurb: '雷雨夜捂在手里就不那么怕。',
+    blurb: '打雷时给青衫抱抱',
   },
   {
     id: 'maltose',
-    name: '麦芽糖块',
+    name: '麦芽糖',
     cost: 15,
     likedBy: ['taotao'],
-    blurb: '拉丝时能画出兔子耳朵。',
+    blurb: '桃桃画糖画用',
   },
   {
     id: 'tea_cake',
-    name: '陈年茶饼',
+    name: '茶饼',
     cost: 35,
     likedBy: ['wenjiu'],
-    blurb: '泡开后有旧宅的味道。',
+    blurb: '温九泡茶用',
   },
   {
     id: 'lotus_paper',
     name: '莲纸',
     cost: 18,
     likedBy: ['hedeng'],
-    blurb: '遇水不烂，适合做河灯。',
+    blurb: '河灯做灯用',
   },
 ]

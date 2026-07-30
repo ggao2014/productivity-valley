@@ -25,7 +25,7 @@ export default function App() {
         <h1 className="brand">山谷</h1>
         <div className="meters">
           <span>金币 {coins}</span>
-          <span>心意 {bond}</span>
+          <span>精力 {bond}</span>
         </div>
       </header>
 

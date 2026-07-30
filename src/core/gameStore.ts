@@ -121,7 +121,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
   hydrate: () => {
     const saved = loadState()
     if (!saved) {
-      set(persist({ ...createInitial(), lastDailyKey: localDayKey(), toast: '山谷醒了。先写下一件小事吧。' }))
+      set(persist({ ...createInitial(), lastDailyKey: localDayKey(), toast: '欢迎！先写个待办吧' }))
       return
     }
     const base = { ...createInitial(), ...saved, toast: null }
@@ -169,7 +169,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         tasks,
         coins: s.coins + coins,
         bond: s.bond + bondGain,
-        toast: `小事落地：+${coins} 金币${bondGain ? ` · +${bondGain} 心意` : ''}`,
+        toast: `完成！+${coins} 金币${bondGain ? ` · +${bondGain} 精力` : ''}`,
       })
     })
   },
@@ -184,14 +184,14 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       if (!def || def.cost <= 0) return s
       if (type === 'living') return s
       if (s.coins < def.cost) {
-        return { ...s, toast: '金币还不够。再做几件小事吧。' }
+        return { ...s, toast: '金币不够哦' }
       }
       const room: RoomInstance = { id: uid(), type, occupantId: null }
       return persist({
         ...s,
         coins: s.coins - def.cost,
         rooms: [...s.rooms, room],
-        toast: `${def.name}贴上小屋了。`,
+        toast: `买好了：${def.name}`,
       })
     })
   },
@@ -201,7 +201,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const def = GIFT_DEFS.find((g) => g.id === giftId)
       if (!def) return s
       if (s.coins < def.cost) {
-        return { ...s, toast: '这点金币还买不下这份小心意。' }
+        return { ...s, toast: '金币不够哦' }
       }
       const inv = [...s.inventory]
       const existing = inv.find((i) => i.id === giftId)
@@ -211,22 +211,22 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         coins: s.coins - def.cost,
         inventory: inv,
-        toast: `收进口袋：${def.name}`,
+        toast: `买到了：${def.name}`,
       })
     })
   },
 
   chat: (npcId) => {
-    set((s) => interact(s, npcId, 1, { friendship: 8, romance: 2 }, '闲聊了一阵。'))
+    set((s) => interact(s, npcId, 1, { friendship: 8, romance: 2 }, '聊了一会儿～'))
   },
 
   heartTalk: (npcId) => {
     set((s) => {
       const p = s.npc[npcId]
       if (!p || friendshipStage(p.friendshipPoints) < 2) {
-        return { ...s, toast: '再熟一点，才好说心事。' }
+        return { ...s, toast: '再熟一点再聊吧' }
       }
-      return interact(s, npcId, 2, { friendship: 14, romance: 4 }, '心事落了一角。')
+      return interact(s, npcId, 2, { friendship: 14, romance: 4 }, '聊得更近了')
     })
   },
 
@@ -235,14 +235,14 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const p = s.npc[npcId]
       if (!p) return s
       if (friendshipStage(p.friendshipPoints) < 2) {
-        return { ...s, toast: '至少先成为好友吧。' }
+        return { ...s, toast: '先成为好友吧' }
       }
       if (p.romanceUnlocked) {
-        return { ...s, toast: '心意早已说开了。' }
+        return { ...s, toast: '已经表白过啦' }
       }
-      if (s.bond < 2) return { ...s, toast: '心意不够了。' }
+      if (s.bond < 2) return { ...s, toast: '精力不够' }
       if (p.interactionsToday >= INTERACTIONS_PER_NPC_PER_DAY) {
-        return { ...s, toast: '今天先到这儿，明日再来。' }
+        return { ...s, toast: '今天聊够啦，明天再来' }
       }
       const npc = {
         ...s.npc,
@@ -257,7 +257,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         bond: s.bond - 2,
         npc,
-        toast: '有些话，轻轻说开了。',
+        toast: '表白成功！',
       })
     })
   },
@@ -269,7 +269,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const item = s.inventory.find((i) => i.id === giftId)
       if (!p || !def || !item || item.qty <= 0) return s
       if (p.interactionsToday >= INTERACTIONS_PER_NPC_PER_DAY) {
-        return { ...s, toast: '今天先到这儿，明日再来。' }
+        return { ...s, toast: '今天聊够啦，明天再来' }
       }
       const liked = def.likedBy.includes(npcId)
       const friendship = liked ? 6 : 10
@@ -290,7 +290,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         inventory: inv,
         npc,
-        toast: liked ? `${def.name}正合心意。` : `${def.name}也收下了，笑了一下。`,
+        toast: liked ? `好喜欢！${def.name}` : `收到了：${def.name}`,
       })
     })
   },
@@ -299,7 +299,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     set((s) => {
       const p = s.npc[npcId]
       if (!p?.livingAtHome) return s
-      return interact(s, npcId, 1, { friendship: 4, romance: 12 }, '茶温还在。')
+      return interact(s, npcId, 1, { friendship: 4, romance: 12 }, '一起喝了茶')
     })
   },
 
@@ -308,7 +308,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       if (!canInvite(s, npcId)) {
         return {
           ...s,
-          toast: '还差点火候：眷恋、空房，或安家的二十文。',
+          toast: '要超喜欢 + 空房 + 20 金币哦',
         }
       }
       const bed = s.rooms.find((r) => {
@@ -330,7 +330,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         coins: s.coins - HOME_FEE,
         rooms,
         npc,
-        toast: `${name}提着小包进了门。「${line}」`,
+        toast: `${name}搬进来了！${line}`,
       })
     })
   },
@@ -352,7 +352,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         rooms,
         npc,
-        toast: `${name}先去山谷住一阵。「${line}」`,
+        toast: `${name}搬出去了。${line}`,
         selectedNpcId: null,
       })
     })
@@ -365,7 +365,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
 
       let coins = s.coins
       let deficitDays = s.deficitDays
-      let toast = `新的一天。首登 +${DAILY_LOGIN_BONUS} 金币，心意回了一点。`
+      let toast = `新的一天！+${DAILY_LOGIN_BONUS} 金币，精力 +1`
 
       // Settle missed days (at least 1)
       const due = totalDailyMaintenance(s)
@@ -373,11 +373,11 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         if (coins >= due) {
           coins -= due
           deficitDays = 0
-          toast = `新的一天。维护花了 ${due} 金币。首登 +${DAILY_LOGIN_BONUS}。`
+          toast = `维护 -${due}，登录 +${DAILY_LOGIN_BONUS}`
         } else {
           coins = 0
           deficitDays += 1
-          toast = '今天的罐头有点紧……多完成几件小事吧。'
+          toast = '钱不够付维护啦，去做点待办吧'
         }
       }
 
@@ -405,7 +405,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     const fresh = {
       ...createInitial(),
       lastDailyKey: localDayKey(),
-      toast: '山谷重新铺开了一张白页。',
+      toast: '已重置，重新开始！',
     }
     set(persist(fresh))
   },
@@ -419,10 +419,10 @@ function interact(
   okToast: string,
 ): GameState {
   const p = s.npc[npcId]
-  if (!p?.met) return { ...s, toast: '还没遇见此人。' }
-  if (s.bond < cost) return { ...s, toast: '心意不够了。去做点小事吧。' }
+  if (!p?.met) return { ...s, toast: '还没遇见 ta' }
+  if (s.bond < cost) return { ...s, toast: '精力不够，去做待办吧' }
   if (p.interactionsToday >= INTERACTIONS_PER_NPC_PER_DAY) {
-    return { ...s, toast: '今天先到这儿，明日再来。' }
+    return { ...s, toast: '今天聊够啦，明天再来' }
   }
   const romanceGain = p.romanceUnlocked ? gain.romance : 0
   const npc = {
