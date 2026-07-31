@@ -11,6 +11,8 @@ export interface Requirement {
   label: string
   met: boolean
   detail: string
+  value: number
+  target: number
 }
 
 export function interactionBlockReason(
@@ -22,14 +24,13 @@ export function interactionBlockReason(
   const progress = state.npc[npcId]
   if (!progress?.met) return '还没有遇见'
   if (progress.interactionsToday >= INTERACTIONS_PER_NPC_PER_DAY) {
-    return '今天已经互动 3 次，明天再来'
+    return `今日互动 ${INTERACTIONS_PER_NPC_PER_DAY}/${INTERACTIONS_PER_NPC_PER_DAY}`
   }
   if (needsFriendship && friendshipStage(progress.friendshipPoints) < 2) {
-    const gap = FRIENDSHIP_THRESHOLDS[2] - progress.friendshipPoints
-    return `还差 ${gap} 友情成为好友`
+    return `友情 ${progress.friendshipPoints}/${FRIENDSHIP_THRESHOLDS[2]}`
   }
   if (state.bond < energyCost) {
-    return `需要 ${energyCost} 精力，完成待办可以恢复`
+    return `精力 ${state.bond}/${energyCost}`
   }
   return null
 }
@@ -58,49 +59,28 @@ export function inviteRequirements(
       label: '关系',
       met: relationshipMet,
       detail: !progress?.romanceUnlocked
-        ? '先成为好友并表白'
-        : romanceGap > 0
-          ? `还差 ${romanceGap} 喜欢`
-          : '已经超喜欢',
+        ? `友情 ${progress?.friendshipPoints ?? 0}/${FRIENDSHIP_THRESHOLDS[2]}`
+        : `喜欢 ${Math.min(progress.romancePoints, ROMANCE_THRESHOLDS[3])}/${ROMANCE_THRESHOLDS[3]}`,
+      value: !progress?.romanceUnlocked
+        ? Math.min(progress?.friendshipPoints ?? 0, FRIENDSHIP_THRESHOLDS[2])
+        : Math.min(progress.romancePoints, ROMANCE_THRESHOLDS[3]),
+      target: !progress?.romanceUnlocked
+        ? FRIENDSHIP_THRESHOLDS[2]
+        : ROMANCE_THRESHOLDS[3],
     },
     {
       label: '空房',
       met: emptyBeds(state.rooms) > 0,
-      detail:
-        emptyBeds(state.rooms) > 0
-          ? `还有 ${emptyBeds(state.rooms)} 张空床`
-          : '购买卧室或客房',
+      detail: `空床 ${Math.min(emptyBeds(state.rooms), 1)}/1`,
+      value: Math.min(emptyBeds(state.rooms), 1),
+      target: 1,
     },
     {
       label: '安家费',
       met: state.coins >= HOME_FEE,
-      detail:
-        state.coins >= HOME_FEE
-          ? `${HOME_FEE} 金币已备好`
-          : `还差 ${HOME_FEE - state.coins} 金币`,
+      detail: `金币 ${Math.min(state.coins, HOME_FEE)}/${HOME_FEE}`,
+      value: Math.min(state.coins, HOME_FEE),
+      target: HOME_FEE,
     },
   ]
-}
-
-export function relationshipNextStep(state: GameState, npcId: string): string {
-  const progress = state.npc[npcId]
-  if (!progress) return '继续探索山谷，等待相遇。'
-  if (progress.interactionsToday >= INTERACTIONS_PER_NPC_PER_DAY) {
-    return '今天已经好好相处过了，明天会有新的话。'
-  }
-  if (friendshipStage(progress.friendshipPoints) < 2) {
-    return `再积累 ${FRIENDSHIP_THRESHOLDS[2] - progress.friendshipPoints} 友情，就能深聊和表白。`
-  }
-  if (!progress.romanceUnlocked) {
-    return '已经成为好友，可以表白开启喜欢线。'
-  }
-  const romanceGap = ROMANCE_THRESHOLDS[3] - progress.romancePoints
-  if (romanceGap > 0) {
-    return `再积累 ${romanceGap} 喜欢，就会达到“超喜欢”。`
-  }
-  const unmet = inviteRequirements(state, npcId).filter((item) => !item.met)
-  if (unmet.length > 0) {
-    return `邀请入住还需要：${unmet.map((item) => item.detail).join('；')}。`
-  }
-  return '条件齐了，现在可以邀请入住。'
 }

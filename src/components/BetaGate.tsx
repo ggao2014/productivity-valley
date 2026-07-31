@@ -32,9 +32,9 @@ export function BetaGate({ children }: { children: ReactNode }) {
         />
         <div className="beta-gate-copy">
         <span className="beta-kicker">v0.9 · 封闭测试</span>
-        <h1>山谷正在邀请少量旅人</h1>
+        <h1>山谷 v0.9 封闭测试</h1>
         <p>
-          这是一份仍在生长的单机测试版。你的待办、关系和存档只保存在当前设备。
+          当前版本仅限受邀测试。待办、关系和存档只保存在当前设备。
         </p>
         <form
           onSubmit={(event) => {

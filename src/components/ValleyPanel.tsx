@@ -1,32 +1,30 @@
 import { useEffect, type CSSProperties } from 'react'
 import {
   canInvite,
-  emptyBeds,
   stageLabels,
-  totalDailyMaintenance,
   useGameStore,
 } from '../core/gameStore'
 import {
   DECORATION_DEFS,
   FRIENDSHIP_LABELS,
+  FRIENDSHIP_THRESHOLDS,
   GIFT_DEFS,
   ROMANCE_LABELS,
+  ROMANCE_THRESHOLDS,
 } from '../core/constants'
 import { NPC_DEFS, type NpcDef } from '../core/npcs'
 import { roomName } from '../core/economy'
 import {
   MILESTONES,
-  gentleWeeklySummary,
-  nextValleyGoal,
   VALLEY_STAGES,
   valleyGrowthPoints,
   valleyStage,
   weeklyProgress,
+  weeklyProgressAtOffset,
 } from '../core/growth'
 import {
   interactionBlockReason,
   inviteRequirements,
-  relationshipNextStep,
   romanceBlockReason,
 } from '../core/progression'
 import type { RoomType } from '../core/types'
@@ -124,8 +122,6 @@ export function ValleyPanel() {
   const rooms = useGameStore((s) => s.rooms)
   const npc = useGameStore((s) => s.npc)
   const selectNpc = useGameStore((s) => s.selectNpc)
-  const maintenance = useGameStore((s) => totalDailyMaintenance(s))
-  const beds = useGameStore((s) => emptyBeds(s.rooms))
   const onboardingStep = useGameStore((s) => s.onboardingStep)
   const valleyRewardReady = useGameStore((s) => s.valleyRewardReady)
   const clearValleyReward = useGameStore((s) => s.clearValleyReward)
@@ -169,6 +165,7 @@ export function ValleyPanel() {
             100,
         )
   const week = weeklyProgress(state.tasks)
+  const lastWeek = weeklyProgressAtOffset(state.tasks, 1)
 
   return (
     <div className="panel">
@@ -184,7 +181,7 @@ export function ValleyPanel() {
       >
         {valleyRewardReady && (
           <div className="valley-response" role="status">
-            山谷亮了一点
+            完成奖励已计入
           </div>
         )}
         {movingInNpcId && (
@@ -278,7 +275,7 @@ export function ValleyPanel() {
             <span>山谷成长 · 第 {growthStage + 1} 阶段</span>
             <h2 id="growth-title">{growthInfo.name}</h2>
           </div>
-          <strong>{growthPoints} 点</strong>
+          <strong>{Math.min(growthPoints, nextThreshold)}/{nextThreshold}</strong>
         </div>
         <p>{growthInfo.description}</p>
         <div
@@ -291,16 +288,23 @@ export function ValleyPanel() {
         >
           <i style={{ width: `${growthPercent}%` }} />
         </div>
-        <p className="growth-next">{nextValleyGoal(state)}</p>
         <div className="weekly-gentle">
-          <span>本周轻目标</span>
-          <strong>待办 {week.completed}/{week.taskGoal}</strong>
-          <strong>活跃 {week.activeDays}/{week.dayGoal} 天</strong>
-          <small>没有连续登录惩罚，回来就从今天继续。</small>
+          <span>本周目标</span>
+          <div>
+            <strong>待办 {week.completed}/{week.taskGoal}</strong>
+            <i><b style={{ width: `${Math.min(100, week.completed / week.taskGoal * 100)}%` }} /></i>
+          </div>
+          <div>
+            <strong>活跃 {week.activeDays}/{week.dayGoal}</strong>
+            <i><b style={{ width: `${Math.min(100, week.activeDays / week.dayGoal * 100)}%` }} /></i>
+          </div>
         </div>
         <details className="weekly-summary">
-          <summary>上周小结</summary>
-          <p>{gentleWeeklySummary(state.tasks)}</p>
+          <summary>上周</summary>
+          <div className="weekly-summary-meters">
+            <span>待办 <b>{lastWeek.completed}</b></span>
+            <span>活跃 <b>{lastWeek.activeDays} 天</b></span>
+          </div>
         </details>
         {state.milestones.length > 0 && (
           <div className="milestone-row" aria-label="已获得里程碑">
@@ -327,14 +331,10 @@ export function ValleyPanel() {
         <EmptyState
           compact
           image="art/empty-states/characters-empty-v1.webp"
-          title="小路暂时很安静"
-          detail="继续完成待办和扩建房间，会有人沿着这条路来到山谷。"
+          title="还没有解锁角色"
+          detail="完成待办并扩建房间，可以解锁更多角色。"
         />
       )}
-
-      <p className="hint">
-        人在小路上。超喜欢 + 有空房，就能请进来住。空床 {beds} · 今天维护 {maintenance}
-      </p>
 
       {visible.length > 0 && (
         <>
@@ -482,6 +482,14 @@ export function NpcSheet() {
   const heartReason = interactionBlockReason(state, id, 2, true)
   const romanceReason = romanceBlockReason(state, id)
   const inviteChecks = inviteRequirements(state, id)
+  const friendshipTarget =
+    Object.values(FRIENDSHIP_THRESHOLDS).find(
+      (threshold) => threshold > npcState.friendshipPoints,
+    ) ?? FRIENDSHIP_THRESHOLDS[3]
+  const romanceTarget =
+    Object.values(ROMANCE_THRESHOLDS).find(
+      (threshold) => threshold > npcState.romancePoints,
+    ) ?? ROMANCE_THRESHOLDS[4]
   const activeDialogue = dialogue?.npcId === id ? dialogue : null
   const portrait = portraitForNpc(id, activeDialogue?.tone)
   const giftKnowledge = GIFT_DEFS.flatMap((gift) => {
@@ -528,14 +536,25 @@ export function NpcSheet() {
               {def.prop} · {def.voice}
               {npcState.livingAtHome ? ' · 住在你家' : ' · 在外面'}
             </p>
-            <div className="stage">
-              <em>友情 {FRIENDSHIP_LABELS[f]}</em>
-              <em>喜欢 {ROMANCE_LABELS[r]}</em>
-              <em>今日 {npcState.interactionsToday}/3</em>
+            <div className="relationship-bars" aria-label="关系进度">
+              <div>
+                <span>友情 · {FRIENDSHIP_LABELS[f]}</span>
+                <strong>{Math.min(npcState.friendshipPoints, friendshipTarget)}/{friendshipTarget}</strong>
+                <i role="progressbar" aria-label="友情进度" aria-valuemin={0} aria-valuemax={friendshipTarget} aria-valuenow={Math.min(npcState.friendshipPoints, friendshipTarget)}>
+                  <b style={{ width: `${Math.min(100, npcState.friendshipPoints / friendshipTarget * 100)}%` }} />
+                </i>
+              </div>
+              {npcState.romanceUnlocked && (
+                <div className="is-romance">
+                  <span>喜欢 · {ROMANCE_LABELS[r]}</span>
+                  <strong>{Math.min(npcState.romancePoints, romanceTarget)}/{romanceTarget}</strong>
+                  <i role="progressbar" aria-label="喜欢进度" aria-valuemin={0} aria-valuemax={romanceTarget} aria-valuenow={Math.min(npcState.romancePoints, romanceTarget)}>
+                    <b style={{ width: `${Math.min(100, npcState.romancePoints / romanceTarget * 100)}%` }} />
+                  </i>
+                </div>
+              )}
+              <em>今日互动 {npcState.interactionsToday}/3</em>
             </div>
-            {!npcState.livingAtHome && (
-              <p className="relationship-next">{relationshipNextStep(state, id)}</p>
-            )}
           </div>
         </div>
 
@@ -616,11 +635,6 @@ export function NpcSheet() {
 
             {!npcState.livingAtHome && (
               <>
-                {chatReason && (
-                  <p className="action-lock-note" role="status">
-                    互动暂缓：{chatReason}
-                  </p>
-                )}
                 <div className="invite-checks" aria-label="邀请入住条件">
                   {inviteChecks.map((requirement) => (
                     <div
@@ -631,6 +645,16 @@ export function NpcSheet() {
                       <p>
                         <strong>{requirement.label}</strong>
                         <small>{requirement.detail}</small>
+                        <i
+                          className="requirement-track"
+                          role="progressbar"
+                          aria-label={`${requirement.label}进度`}
+                          aria-valuemin={0}
+                          aria-valuemax={requirement.target}
+                          aria-valuenow={requirement.value}
+                        >
+                          <b style={{ width: `${requirement.value / requirement.target * 100}%` }} />
+                        </i>
                       </p>
                     </div>
                   ))}

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   earnedMilestones,
   giftCapacity,
-  gentleWeeklySummary,
   inventoryCount,
   valleyGrowthPoints,
   valleyStage,
@@ -67,12 +66,6 @@ describe('gentle long-term systems', () => {
       taskGoal: 5,
       dayGoal: 3,
     })
-  })
-
-  it('describes an empty previous week without blame or lost progress', () => {
-    expect(
-      gentleWeeklySummary([], new Date(2026, 6, 30, 12)),
-    ).toContain('今天回来就算新的开始')
   })
 
   it('gives every storage room eight additional gift slots', () => {

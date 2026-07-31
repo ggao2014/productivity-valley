@@ -654,15 +654,10 @@ button {
   transition: width .5s ease;
 }
 
-.growth-next {
-  color: #58462d !important;
-}
-
 .weekly-gentle {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 12px;
   margin-top: 12px;
   padding-top: 11px;
   border-top: 1px dashed rgba(111, 88, 55, .22);
@@ -670,16 +665,31 @@ button {
 }
 
 .weekly-gentle > span {
+  grid-column: 1 / -1;
   font-weight: 700;
 }
 
-.weekly-gentle > strong {
+.weekly-gentle > div {
+  display: grid;
+  gap: 5px;
+}
+
+.weekly-gentle strong {
   color: #6d7450;
 }
 
-.weekly-gentle > small {
-  width: 100%;
-  color: var(--muted);
+.weekly-gentle i {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(109, 116, 80, .14);
+}
+
+.weekly-gentle i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #8d9864;
 }
 
 .milestone-row {
@@ -731,11 +741,11 @@ button {
   cursor: pointer;
 }
 
-.weekly-summary p {
+.weekly-summary-meters {
+  display: flex;
+  gap: 14px;
   margin: 7px 0 0;
-  padding: 8px 10px;
-  border-left: 2px solid rgba(177, 143, 83, .35);
-  background: rgba(255, 252, 239, .45);
+  font-variant-numeric: tabular-nums;
 }
 
 .house-expansions {
@@ -1493,6 +1503,41 @@ button {
   font-size: 1.15rem;
 }
 
+.wallet-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wallet-summary > span {
+  display: grid;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.wallet-summary b {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-summary small {
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.collection-meters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: -2px 0 10px;
+}
+
+.collection-meters:has(> :only-child) {
+  grid-template-columns: minmax(0, 240px);
+}
+
 .gift-shop-card {
   position: relative;
   overflow: hidden;
@@ -1567,6 +1612,34 @@ button {
   background: rgba(196, 106, 69, 0.1);
   color: #9a5238;
   font-size: 0.72rem;
+}
+
+.shop-meter {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin-top: auto;
+  color: var(--clay-deep);
+}
+
+.shop-meter small {
+  font-size: .7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-meter i {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(150, 102, 75, .14);
+}
+
+.shop-meter i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
 }
 
 .rooms-strip {
@@ -2364,21 +2437,51 @@ button {
   font-size: 0.85rem;
 }
 
-.relationship-next {
-  margin: 9px 0 0;
-  padding: 8px 10px;
-  border-left: 3px solid rgba(92, 122, 90, 0.5);
-  border-radius: 4px 10px 10px 4px;
-  background: rgba(255, 255, 255, 0.5);
-  color: var(--ink-soft);
-  font-size: 0.8rem;
-  line-height: 1.45;
+.relationship-bars {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
 }
 
-.action-lock-note {
-  margin: 10px 0 0;
-  color: #98543d;
-  font-size: 0.8rem;
+.relationship-bars > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--moss-deep);
+  font-size: 0.78rem;
+}
+
+.relationship-bars > div.is-romance {
+  color: var(--clay-deep);
+}
+
+.relationship-bars strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.relationship-bars i,
+.requirement-track {
+  grid-column: 1 / -1;
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(92, 122, 90, 0.14);
+}
+
+.relationship-bars i b,
+.requirement-track b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+}
+
+.relationship-bars > em {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-style: normal;
 }
 
 .invite-checks {
@@ -2420,6 +2523,16 @@ button {
 .invite-checks strong,
 .invite-checks small {
   display: block;
+}
+
+.invite-checks .requirement-track {
+  width: 100%;
+  margin-top: 6px;
+  color: var(--clay);
+}
+
+.invite-checks .is-met .requirement-track {
+  color: var(--moss-deep);
 }
 
 .preference-journal {

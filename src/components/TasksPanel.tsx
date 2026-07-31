@@ -46,9 +46,9 @@ export function TasksPanel() {
       <section className="today-progress" aria-labelledby="today-progress-title">
         <div className="today-progress-heading">
           <div>
-            <span>今天的脚印</span>
+            <span>今日进度</span>
             <h2 id="today-progress-title">
-              {today.completed > 0 ? '山谷记得你的努力' : '从一件小事开始'}
+              {today.completed > 0 ? '今天完成得不错' : '添加今天的待办'}
             </h2>
           </div>
           <strong aria-label={`连续活跃 ${streak} 天`}>{streak} 天连续</strong>
@@ -77,8 +77,8 @@ export function TasksPanel() {
         {open.length === 0 && (
           <EmptyState
             image="art/empty-states/tasks-empty-v1.webp"
-            title="纸页还空着"
-            detail="写下一件想完成的小事，山谷会从这里开始回应。"
+            title="还没有待办"
+            detail="在下方输入待办内容，并选择难度。"
           />
         )}
         {open.map((t) => (
@@ -160,7 +160,7 @@ export function TasksPanel() {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="写点什么…"
+          placeholder="输入待办内容"
           aria-label="待办标题"
         />
         <select

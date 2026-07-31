@@ -4,10 +4,10 @@ import type { GameState, MilestoneId, Task } from './types'
 export type ValleyStage = 0 | 1 | 2 | 3
 
 export const VALLEY_STAGES = [
-  { name: '荒地', threshold: 0, description: '一块等人慢慢照料的土地' },
-  { name: '初步修整', threshold: 6, description: '小路与屋舍有了生活的轮廓' },
-  { name: '温暖小屋', threshold: 18, description: '灯火、房间与来客渐渐齐全' },
-  { name: '有人生活的家', threshold: 36, description: '这里已经留下共同生活的痕迹' },
+  { name: '荒地', threshold: 0, description: '完成待办以开始建设' },
+  { name: '初步修整', threshold: 6, description: '已修好小路和基础屋舍' },
+  { name: '完善小屋', threshold: 18, description: '已解锁更多房间和访客' },
+  { name: '完整住处', threshold: 36, description: '房屋与主要生活设施已经齐全' },
 ] as const
 
 export const MILESTONES: Array<{
@@ -16,12 +16,12 @@ export const MILESTONES: Array<{
   detail: string
   asset: string
 }> = [
-  { id: 'first_task', name: '第一步', detail: '完成第一件待办', asset: 'first-task-v1.webp' },
-  { id: 'tasks_10', name: '渐入佳境', detail: '完成 10 件待办', asset: 'tasks-10-v1.webp' },
-  { id: 'tasks_25', name: '日积月累', detail: '完成 25 件待办', asset: 'tasks-25-v1.webp' },
-  { id: 'first_room', name: '添一间房', detail: '第一次扩建房间', asset: 'first-room-v1.webp' },
-  { id: 'first_friend', name: '两杯茶', detail: '拥有第一位熟悉的朋友', asset: 'first-friend-v1.webp' },
-  { id: 'first_partner', name: '一盏灯', detail: '第一次邀请伴侣入住', asset: 'first-partner-v1.webp' },
+  { id: 'first_task', name: '首项完成', detail: '完成第一件待办', asset: 'first-task-v1.webp' },
+  { id: 'tasks_10', name: '完成 10 项', detail: '完成 10 件待办', asset: 'tasks-10-v1.webp' },
+  { id: 'tasks_25', name: '完成 25 项', detail: '完成 25 件待办', asset: 'tasks-25-v1.webp' },
+  { id: 'first_room', name: '首次扩建', detail: '第一次扩建房间', asset: 'first-room-v1.webp' },
+  { id: 'first_friend', name: '首位好友', detail: '拥有第一位熟悉的朋友', asset: 'first-friend-v1.webp' },
+  { id: 'first_partner', name: '首次入住', detail: '第一次邀请伴侣入住', asset: 'first-partner-v1.webp' },
 ]
 
 export function completedTaskCount(tasks: Task[]): number {
@@ -68,17 +68,6 @@ export function earnedMilestones(state: GameState): MilestoneId[] {
   ]
 }
 
-export function nextValleyGoal(state: GameState): string {
-  const stage = valleyStage(state)
-  const points = valleyGrowthPoints(state)
-  if (stage === 3) return '山谷已成家。接下来，用装饰留下你们自己的生活痕迹。'
-  if (stage === 2 && partnerIds(state).length === 0) {
-    return '下一步：和喜欢的人继续靠近，准备一张空床，邀请对方入住。'
-  }
-  const target = VALLEY_STAGES[stage + 1].threshold
-  return `下一阶段还需 ${Math.max(0, target - points)} 点成长：完成待办 +1，扩建房间 +4，结交好友 +3。`
-}
-
 export function weeklyProgress(tasks: Task[], now = new Date()) {
   return weeklyProgressAtOffset(tasks, 0, now)
 }
@@ -105,17 +94,6 @@ export function weeklyProgressAtOffset(
     }),
   ).size
   return { completed: completed.length, activeDays, taskGoal: 5, dayGoal: 3 }
-}
-
-export function gentleWeeklySummary(tasks: Task[], now = new Date()): string {
-  const week = weeklyProgressAtOffset(tasks, 1, now)
-  if (week.completed === 0) {
-    return '上周没有留下记录也没关系。山谷不会催促你，今天回来就算新的开始。'
-  }
-  if (week.activeDays >= week.dayGoal || week.completed >= week.taskGoal) {
-    return `上周完成 ${week.completed} 件待办，在 ${week.activeDays} 天留下了脚印。山谷记住了这份稳定。`
-  }
-  return `上周完成 ${week.completed} 件待办，在 ${week.activeDays} 天照料过山谷。每一次回来都算数。`
 }
 
 export function giftCapacity(state: Pick<GameState, 'rooms'>): number {

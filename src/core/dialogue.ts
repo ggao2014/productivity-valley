@@ -29,23 +29,23 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
   shendu: {
     chat: [
       {
-        text: '门边给竹篙留的位置刚刚好。回来时，一眼就能看见灯。',
+        text: '竹篙我放门边了，出门拿着方便。',
         tone: 'warm',
         condition: { livingAtHome: true },
       },
-      { text: '水面今天很静。你呢，忙完了吗？', tone: 'neutral' },
-      { text: '别急着赶下一件。先在这儿站一会儿。', tone: 'warm' },
-      { text: '风从那边来。要是顺路，我送你一程。', tone: 'warm' },
+      { text: '河水今天不急，摆渡应该挺顺。你忙完了吗？', tone: 'neutral' },
+      { text: '先喝口水吧，剩下的活等会儿再做。', tone: 'warm' },
+      { text: '你要过河吗？顺路的话我送你。', tone: 'warm' },
       {
         text: '昨晚门闩有点松，我顺手修好了。你不用惦记。',
         tone: 'neutral',
       },
       {
-        text: '屋里有人留灯，走夜路时会觉得近很多。',
+        text: '你晚上回来得晚，我会把门口的灯开着。',
         tone: 'shy',
       },
       {
-        text: '晨雾还没散。河面像一张没写过的纸。',
+        text: '早上雾大，过河要等一会儿。',
         tone: 'neutral',
         condition: { time: 'morning' },
       },
@@ -81,11 +81,11 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         tone: 'worried',
       },
       {
-        text: '客房收拾得很干净。有人来时，不会觉得是过客。',
+        text: '客房收拾好了，临时来人也有地方住。',
         tone: 'warm',
       },
       {
-        text: '你已经走过不少路了。偶尔回头看，也不算停下。',
+        text: '你最近做完了不少事，休息半天也不耽误。',
         tone: 'warm',
         condition: { minFriendship: 1 },
       },
@@ -94,27 +94,27 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         tone: 'warm',
       },
       {
-        text: '我不太擅长告别。所以你回来，我会一直在。',
+        text: '我不太会说话。不过你来找我，我都在。',
         tone: 'shy',
         condition: { minFriendship: 3 },
       },
       { text: '河边那块石头晒暖了，坐着正好。', tone: 'neutral' },
       { text: '今天的风有稻草味。上游大概在收粮。', tone: 'neutral' },
-      { text: '鞋底沾了泥也没关系。路走过，总会留下点什么。', tone: 'warm' },
+      { text: '鞋底全是泥，进屋前在石阶上刮一刮。', tone: 'warm' },
       { text: '你眉头皱得太久了。先松一松，事情跑不了。', tone: 'worried' },
-      { text: '竹篙上的旧裂纹还撑得住。旧东西也有旧东西的办法。', tone: 'neutral' },
-      { text: '水急的时候别硬撑，绕一点路不算退。', tone: 'worried' },
+      { text: '竹篙裂了一道，我拿麻绳缠过了，还能用。', tone: 'neutral' },
+      { text: '河水太急就别下水，等水位降了再走。', tone: 'worried' },
       { text: '我带了两个饭团。原本就打算吃两个，你别多想。', tone: 'shy' },
-      { text: '云影走得快，河水却记得它们来过。', tone: 'neutral' },
+      { text: '这几天水位涨得快，河边的东西记得收高一点。', tone: 'neutral' },
       { text: '忙完这一件，就认真歇一会儿。我会提醒你。', tone: 'warm' },
       { text: '你今天做得够多了。剩下的交给明天的你。', tone: 'warm' },
     ],
     heart: [
       { text: '我不太会说好听的话。不过，你来时，我总能认出来。', tone: 'shy' },
-      { text: '有些话像水底的石头。看不见，但一直都在。', tone: 'neutral' },
+      { text: '有些事我没说，不代表我没放在心上。', tone: 'neutral' },
     ],
     romance: [
-      { text: '我听明白了。以后，你不用一个人等船。', tone: 'shy' },
+      { text: '我明白了。以后有事，我们一起商量。', tone: 'shy' },
     ],
     giftLiked: [
       { text: '是给我的？我会好好收着。', tone: 'warm' },
@@ -126,7 +126,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
       { text: '我收下。不过下次，不必费心挑这种。', tone: 'neutral' },
     ],
     tea: [
-      { text: '茶还热。今天的事，慢慢说。', tone: 'warm' },
+      { text: '茶还热。你今天遇到什么事了？', tone: 'warm' },
     ],
     invite: [
       { text: '那我住下。门边给竹篙留个地方就好。', tone: 'shy' },
@@ -152,7 +152,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         tone: 'shy',
       },
       {
-        text: '这么早就醒？太阳都还没准备好见你。',
+        text: '这么早就醒？早饭吃了吗？',
         tone: 'annoyed',
         condition: { time: 'morning' },
       },
@@ -161,7 +161,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         tone: 'worried',
       },
       {
-        text: '都这个时辰了，还在想事情？脑子也得关门。',
+        text: '都这个时辰了还不睡？剩下的明天再想。',
         tone: 'worried',
         condition: { time: 'evening' },
       },
@@ -217,7 +217,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
     ],
     heart: [
       { text: '我只是记性好。才不是特意记得你的事。', tone: 'shy' },
-      { text: '伞可以分你一半。再多就没有了。', tone: 'shy' },
+      { text: '下雨就跟我一起走，别又忘带伞。', tone: 'shy' },
     ],
     romance: [
       { text: '……这种话别随便说。说了，我可会当真。', tone: 'shy' },
@@ -241,13 +241,13 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
   taotao: {
     chat: [
       {
-        text: '早呀！晨光最适合画透明的糖翅膀。',
+        text: '早呀！我刚去看了菜地，豆角又长高了一截。',
         tone: 'warm',
         condition: { time: 'morning' },
       },
       { text: '你来得正好！我刚画出一只歪耳朵兔子。', tone: 'warm' },
-      { text: '今天做完了什么？说来听听，我给你画个糖。', tone: 'warm' },
-      { text: '累了就坐下。糖丝要慢慢绕，日子也是。', tone: 'neutral' },
+      { text: '今天做完什么了？说来听听。', tone: 'warm' },
+      { text: '累了就坐会儿。我刚烧好一壶水。', tone: 'neutral' },
       {
         text: '我把铜勺挂在厨房啦！每天看见它，就知道真的住下了。',
         tone: 'warm',
@@ -258,7 +258,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         tone: 'shy',
       },
       {
-        text: '早上的糖最听话，凉得慢，还会透一点金光。',
+        text: '早上凉快，熬糖不容易糊锅。',
         tone: 'warm',
       },
       {
@@ -266,7 +266,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         tone: 'worried',
       },
       {
-        text: '晚霞像刚熬好的糖浆！再等一会儿就会凝住。',
+        text: '天快黑了，我得把晒在外面的糖纸收回来。',
         tone: 'warm',
         condition: { time: 'evening' },
       },
@@ -293,7 +293,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         tone: 'neutral',
       },
       {
-        text: '客房床头放颗糖，远道来的人醒来就不会太陌生。',
+        text: '客房床头放个水壶吧，来人晚上口渴不用找。',
         tone: 'warm',
       },
       {
@@ -302,24 +302,24 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
         condition: { minFriendship: 1 },
       },
       {
-        text: '你不开心的时候不用笑。我可以先替你开心一会儿。',
+        text: '你今天心情不好就直说，不用装高兴。',
         tone: 'worried',
       },
       {
-        text: '以后每个季节我都画一只兔子。我们会有好长一排。',
+        text: '以后每个季节画一只兔子，贴在厨房墙上好不好？',
         tone: 'shy',
         condition: { minFriendship: 3 },
       },
       { text: '刚才那只麻雀差点偷走我的糖签！它眼光真好。', tone: 'warm' },
-      { text: '糖丝断了可以重新绕，今天没做好也可以明天再来。', tone: 'neutral' },
+      { text: '这一锅糖熬坏了，我明天再做。浪费是有点心疼。', tone: 'neutral' },
       { text: '我学会画小乌龟了！虽然大家都说它像一块饼。', tone: 'warm' },
       { text: '你是不是又忘了休息？我都看见你揉眼睛啦。', tone: 'annoyed' },
       { text: '我今天画的第一只兔子有三只耳朵。就当它听得更清楚！', tone: 'warm' },
       { text: '铜勺敲一下是清脆的，敲两下就是叫你来吃糖。', tone: 'neutral' },
-      { text: '别怕做坏呀。最丑的那块糖也可以留给我吃。', tone: 'warm' },
-      { text: '风把糖纸吹跑了三张，我追回两张。另一张去旅行啦。', tone: 'warm' },
-      { text: '你今天的眼睛有点暗。先借你一只亮晶晶的兔子。', tone: 'worried' },
-      { text: '完成一小件也要算数！不许把自己的努力偷偷擦掉。', tone: 'annoyed' },
+      { text: '做坏了也能吃，就是样子不好看。', tone: 'warm' },
+      { text: '风把糖纸吹跑了三张，我只追回两张。', tone: 'warm' },
+      { text: '你看起来没睡好。要不要先去躺一会儿？', tone: 'worried' },
+      { text: '做完一件就是一件，别总说不算。', tone: 'annoyed' },
     ],
     heart: [
       { text: '我一高兴就想画兔子。最近画得特别多，你猜为什么？', tone: 'shy' },
@@ -338,7 +338,7 @@ const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
       { text: '唔，我可能不太会用这个……但还是谢谢你。', tone: 'worried' },
     ],
     tea: [
-      { text: '茶配糖，今天就会甜一点。', tone: 'warm' },
+      { text: '喝茶吗？我拿了两块麦芽糖。', tone: 'warm' },
     ],
     invite: [
       { text: '真的？那我把铜勺和兔子们都搬来！', tone: 'warm' },
@@ -354,14 +354,14 @@ export function dialogueEntriesFor(
 }
 
 const GENERIC_DIALOGUE: Record<DialogueKind, DialogueEntry> = {
-  chat: { text: '你们在小路边聊了一会儿。', tone: 'neutral' },
-  heart: { text: '有些话说出口以后，你们更亲近了。', tone: 'warm' },
-  romance: { text: '对方认真听完，轻轻点了点头。', tone: 'shy' },
-  giftLiked: { text: '这份礼物正合心意。', tone: 'warm' },
-  giftNeutral: { text: '礼物被认真收下了。', tone: 'neutral' },
-  giftDisliked: { text: '对方收下礼物，神情有些为难。', tone: 'worried' },
-  tea: { text: '一壶茶见了底，时间过得很快。', tone: 'warm' },
-  invite: { text: '对方答应留下来。', tone: 'warm' },
+  chat: { text: '你们聊了聊今天各自做的事。', tone: 'neutral' },
+  heart: { text: '你们说了一些平时不会提的事。', tone: 'warm' },
+  romance: { text: '对方听完后答应了。', tone: 'shy' },
+  giftLiked: { text: '对方很喜欢这份礼物。', tone: 'warm' },
+  giftNeutral: { text: '对方收下了礼物。', tone: 'neutral' },
+  giftDisliked: { text: '对方收下礼物，但似乎不太喜欢。', tone: 'worried' },
+  tea: { text: '你们喝完茶，又聊了一会儿。', tone: 'warm' },
+  invite: { text: '对方答应入住。', tone: 'warm' },
 }
 
 function conditionMatches(
@@ -434,9 +434,9 @@ const COMPLETION_REACTIONS: Record<
   Record<Difficulty, readonly string[]>
 > = {
   shendu: {
-    small: ['做完就好。先歇一会儿。', '水慢慢走，事情也一件件来。'],
-    medium: ['这件事不轻。你还是稳稳做完了。', '今天走了挺远，别忘了看看风景。'],
-    large: ['这么难也做到了。今晚可以安心些。', '我看见了。你比自己想的更有韧劲。'],
+    small: ['做完就好。先歇一会儿。', '完成了。下一件不用急着开始。'],
+    medium: ['这件事不轻，你还是做完了。', '忙了挺久吧？先吃点东西。'],
+    large: ['这么难也做到了。今晚可以安心些。', '这事确实难，你处理得很好。'],
   },
   guwan: {
     small: ['还不错。至少没拖到明天。', '做完了？那就别偷偷挑自己的毛病。'],
@@ -444,9 +444,9 @@ const COMPLETION_REACTIONS: Record<
     large: ['……真做完了。好吧，我很佩服。', '这么大的事都扛下来了，厉害。只说一次。'],
   },
   taotao: {
-    small: ['完成啦！给你画一只小兔子！', '又点亮一小格，今天真不错！'],
+    small: ['完成啦！给你画一只小兔子！', '做完一件啦，记得歇会儿！'],
     medium: ['哇，这件事值得一整块糖！', '你做到了！我要画只举旗子的兔子！'],
-    large: ['太厉害了！今天要画最大的一只兔子！', '这么难都完成了，山谷都亮起来啦！'],
+    large: ['太厉害了！今天要画最大的一只兔子！', '这么难都完成了，晚上得加个菜！'],
   },
 }
 

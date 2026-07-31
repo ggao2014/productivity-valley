@@ -2,21 +2,19 @@ import { describe, expect, it } from 'vitest'
 import {
   interactionBlockReason,
   inviteRequirements,
-  relationshipNextStep,
   romanceBlockReason,
 } from '../progression'
 import { gameState, npcProgress } from './fixtures'
 
 describe('progression guidance', () => {
-  it('explains the exact friendship gap for deep conversation and romance', () => {
+  it('reports compact friendship progress for locked actions', () => {
     const state = gameState({
       npc: { shendu: npcProgress({ friendshipPoints: 34 }) },
     })
     expect(interactionBlockReason(state, 'shendu', 2, true)).toBe(
-      '还差 16 友情成为好友',
+      '友情 34/50',
     )
-    expect(romanceBlockReason(state, 'shendu')).toBe('还差 16 友情成为好友')
-    expect(relationshipNextStep(state, 'shendu')).toContain('再积累 16 友情')
+    expect(romanceBlockReason(state, 'shendu')).toBe('友情 34/50')
   })
 
   it('prioritizes the daily cap and energy shortage', () => {
@@ -28,15 +26,13 @@ describe('progression guidance', () => {
         }),
       },
     })
-    expect(interactionBlockReason(capped, 'shendu', 1)).toContain('明天再来')
+    expect(interactionBlockReason(capped, 'shendu', 1)).toBe('今日互动 3/3')
 
     const tired = gameState({
       bond: 0,
       npc: { shendu: npcProgress({ friendshipPoints: 50 }) },
     })
-    expect(interactionBlockReason(tired, 'shendu', 2, true)).toContain(
-      '完成待办',
-    )
+    expect(interactionBlockReason(tired, 'shendu', 2, true)).toBe('精力 0/2')
   })
 
   it('lists relationship, room and fee gaps for inviting someone home', () => {
@@ -51,9 +47,9 @@ describe('progression guidance', () => {
       },
     })
     expect(inviteRequirements(state, 'shendu')).toEqual([
-      { label: '关系', met: false, detail: '还差 15 喜欢' },
-      { label: '空房', met: false, detail: '购买卧室或客房' },
-      { label: '安家费', met: false, detail: '还差 12 金币' },
+      { label: '关系', met: false, detail: '喜欢 105/120', value: 105, target: 120 },
+      { label: '空房', met: false, detail: '空床 0/1', value: 0, target: 1 },
+      { label: '安家费', met: false, detail: '金币 8/20', value: 8, target: 20 },
     ])
   })
 
@@ -74,9 +70,6 @@ describe('progression guidance', () => {
     })
     expect(inviteRequirements(state, 'shendu').every((item) => item.met)).toBe(
       true,
-    )
-    expect(relationshipNextStep(state, 'shendu')).toBe(
-      '条件齐了，现在可以邀请入住。',
     )
   })
 })

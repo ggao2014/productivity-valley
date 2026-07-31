@@ -98,18 +98,18 @@ export interface DecorationDef {
 }
 
 export const DECORATION_DEFS: DecorationDef[] = [
-  { id: 'clay_flowerpot', name: '陶土花盆', cost: 18, stage: 1, asset: 'clay-flowerpot-v1.webp', blurb: '一小盆白花，安静地开着' },
-  { id: 'bamboo_lantern', name: '竹编灯', cost: 22, stage: 1, asset: 'bamboo-lantern-v1.webp', blurb: '入夜后有一团柔光' },
-  { id: 'wooden_stool', name: '小木凳', cost: 16, stage: 1, asset: 'wooden-stool-v1.webp', blurb: '坐一会儿，看看溪水' },
-  { id: 'reed_basket', name: '苇编篮', cost: 14, stage: 1, asset: 'reed-basket-v1.webp', blurb: '能装下刚摘的草叶' },
-  { id: 'stone_basin', name: '石水钵', cost: 30, stage: 2, asset: 'stone-basin-v1.webp', blurb: '雨后会留一汪清水' },
-  { id: 'firewood_bundle', name: '柴火束', cost: 20, stage: 1, asset: 'firewood-bundle-v1.webp', blurb: '整整齐齐靠在屋边' },
-  { id: 'water_jar', name: '青釉水缸', cost: 28, stage: 2, asset: 'water-jar-v1.webp', blurb: '旧青釉上留着手作痕迹' },
-  { id: 'wooden_signpost', name: '木路牌', cost: 24, stage: 2, asset: 'wooden-signpost-v1.webp', blurb: '不写字，也知道路通向家' },
-  { id: 'potted_bamboo', name: '盆栽细竹', cost: 35, stage: 2, asset: 'potted-bamboo-v1.webp', blurb: '风来时轻轻摇一摇' },
-  { id: 'tea_table', name: '双杯茶桌', cost: 40, stage: 3, asset: 'tea-table-v1.webp', blurb: '两只杯子，总有人同坐' },
-  { id: 'paper_lantern', name: '落地纸灯', cost: 38, stage: 3, asset: 'paper-lantern-v1.webp', blurb: '留一盏不刺眼的灯' },
-  { id: 'wildflower_patch', name: '野花小圃', cost: 32, stage: 2, asset: 'wildflower-patch-v1.webp', blurb: '橙白小花围出一角春天' },
+  { id: 'clay_flowerpot', name: '陶土花盆', cost: 18, stage: 1, asset: 'clay-flowerpot-v1.webp', blurb: '种有白色小花的陶盆' },
+  { id: 'bamboo_lantern', name: '竹编灯', cost: 22, stage: 1, asset: 'bamboo-lantern-v1.webp', blurb: '夜间会亮的竹编灯' },
+  { id: 'wooden_stool', name: '小木凳', cost: 16, stage: 1, asset: 'wooden-stool-v1.webp', blurb: '放在溪边的小木凳' },
+  { id: 'reed_basket', name: '苇编篮', cost: 14, stage: 1, asset: 'reed-basket-v1.webp', blurb: '用芦苇编成的提篮' },
+  { id: 'stone_basin', name: '石水钵', cost: 30, stage: 2, asset: 'stone-basin-v1.webp', blurb: '可以接雨水的石钵' },
+  { id: 'firewood_bundle', name: '柴火束', cost: 20, stage: 1, asset: 'firewood-bundle-v1.webp', blurb: '捆扎整齐的柴火' },
+  { id: 'water_jar', name: '青釉水缸', cost: 28, stage: 2, asset: 'water-jar-v1.webp', blurb: '带青色釉面的水缸' },
+  { id: 'wooden_signpost', name: '木路牌', cost: 24, stage: 2, asset: 'wooden-signpost-v1.webp', blurb: '放在路边的木制路牌' },
+  { id: 'potted_bamboo', name: '盆栽细竹', cost: 35, stage: 2, asset: 'potted-bamboo-v1.webp', blurb: '一盆细竹' },
+  { id: 'tea_table', name: '双杯茶桌', cost: 40, stage: 3, asset: 'tea-table-v1.webp', blurb: '摆有两只茶杯的小桌' },
+  { id: 'paper_lantern', name: '落地纸灯', cost: 38, stage: 3, asset: 'paper-lantern-v1.webp', blurb: '低亮度的落地纸灯' },
+  { id: 'wildflower_patch', name: '野花小圃', cost: 32, stage: 2, asset: 'wildflower-patch-v1.webp', blurb: '一片橙白色野花' },
 ]
 
 export interface GiftDef {

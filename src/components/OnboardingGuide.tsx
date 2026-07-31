@@ -4,22 +4,22 @@ const COPY = {
   1: {
     eyebrow: '第一步 · 写下来',
     title: '今天想完成什么？',
-    body: '不必宏大。一件真正能完成的小事，就是山谷的起点。',
+    body: '输入一项具体、可以完成的待办。',
   },
   2: {
     eyebrow: '第二步 · 去完成',
-    title: '现实中的行动，会带回奖励',
+    title: '完成待办，领取奖励',
     body: '完成刚才的待办，再回来点一下“完成”。',
   },
   3: {
     eyebrow: '第三步 · 去见一个人',
-    title: '带着新获得的精力回到山谷',
-    body: '选择一位路上的角色，和 ta 聊聊。',
+    title: '使用精力与角色互动',
+    body: '回到山谷，选择一位角色聊天。',
   },
   4: {
     eyebrow: '引导完成',
-    title: '山谷已经开始回应你',
-    body: '以后每次完成现实中的事情，都能继续积累金币、精力与关系。',
+    title: '新手引导完成',
+    body: '完成待办可获得金币和精力，用于扩建、购买和角色互动。',
   },
 } as const
 
@@ -55,7 +55,7 @@ export function OnboardingGuide() {
         )}
         {step === 4 ? (
           <button className="btn" onClick={() => setStep(0)}>
-            开始自己的旅程
+            完成
           </button>
         ) : (
           <button className="guide-skip" onClick={() => setStep(0)}>

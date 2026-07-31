@@ -90,7 +90,7 @@ export function BetaFeedback() {
               alt=""
               draggable={false}
             />
-            <h2 id="feedback-title">这次回来，山谷感觉如何？</h2>
+            <h2 id="feedback-title">测试反馈</h2>
             <p className="hint">
               当前版本不上传任何内容。提交会下载一个 JSON
               文件，你可以检查后再发给测试邀请人。
@@ -170,7 +170,7 @@ export function BetaFeedback() {
                 maxLength={1200}
                 rows={6}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="哪些地方让你想继续？哪里让你停住了？"
+                placeholder="请描述好用、不清楚或出现问题的地方。"
               />
             </label>
             <small className="field-count">{message.length}/1200</small>

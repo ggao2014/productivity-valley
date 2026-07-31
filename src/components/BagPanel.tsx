@@ -37,10 +37,12 @@ export function BagPanel() {
   return (
     <div className="panel">
       <h2 className="section-title">口袋</h2>
-      <p className="hint">
-        金币 {coins} · 精力 {bond}/10 · 明天花 {maintenance}
-        {partners.length > 0 ? `（${partners.length}人 ×${per}）` : ''}
-      </p>
+      <div className="wallet-summary" aria-label="资源概览">
+        <span><b>{coins}</b><small>金币</small></span>
+        <span><b>{bond}/10</b><small>精力</small></span>
+        <span><b>{maintenance}</b><small>明日维护</small></span>
+        {partners.length > 0 && <span><b>{partners.length} × {per}</b><small>同住人数 × 单人</small></span>}
+      </div>
 
       {partners.length > 0 && (
         <p className="muted">
@@ -72,9 +74,7 @@ export function BagPanel() {
                 {owned ? ` · 已有${owned}` : ''}
                 {r.capacity ? ' · 可住' : ''}
               </span>
-              {shortage > 0 && (
-                <small className="shop-lock">还差 {shortage} 金币</small>
-              )}
+              {shortage > 0 && <ShopMeter value={coins} target={r.cost} label="金币" />}
             </button>
           )
         })}
@@ -83,10 +83,10 @@ export function BagPanel() {
       <h2 className="section-title" style={{ marginTop: 22 }}>
         山谷装饰
       </h2>
-      <p className="hint">
-        已收藏 {state.decorations.length}/{DECORATION_DEFS.length} · 已摆放{' '}
-        {state.placedDecorations.length}/6
-      </p>
+      <div className="collection-meters">
+        <ShopMeter value={state.decorations.length} target={DECORATION_DEFS.length} label="收藏" />
+        <ShopMeter value={state.placedDecorations.length} target={6} label="摆放" />
+      </div>
       <div className="shop-grid decoration-shop-grid">
         {DECORATION_DEFS.map((decoration) => {
           const owned = state.decorations.includes(decoration.id)
@@ -122,11 +122,7 @@ export function BagPanel() {
                     : '已收藏 · 点击摆放'
                   : `${decoration.cost} 金币`}
               </span>
-              {!owned && stageLocked && (
-                <small className="shop-lock">
-                  山谷第 {decoration.stage + 1} 阶段解锁
-                </small>
-              )}
+              {!owned && stageLocked && <ShopMeter value={growthStage + 1} target={decoration.stage + 1} label="阶段" />}
             </button>
           )
         })}
@@ -135,12 +131,9 @@ export function BagPanel() {
       <h2 className="section-title" style={{ marginTop: 22 }}>
         礼物
       </h2>
-      <p className="hint">
-        礼物袋 {giftCount}/{capacity}
-        {rooms.some((room) => room.type === 'storage')
-          ? ' · 储藏室让礼物有了更多位置'
-          : ' · 扩建储藏室可增加 8 格'}
-      </p>
+      <div className="collection-meters">
+        <ShopMeter value={giftCount} target={capacity} label="礼物袋" />
+      </div>
       <div className="shop-grid">
         {GIFT_DEFS.map((g) => {
           const qty = inventory.find((i) => i.id === g.id)?.qty ?? 0
@@ -161,9 +154,7 @@ export function BagPanel() {
               <span>
                 {g.cost} 金币
               </span>
-              {shortage > 0 && (
-                <small className="shop-lock">还差 {shortage} 金币</small>
-              )}
+              {shortage > 0 && <ShopMeter value={coins} target={g.cost} label="金币" />}
               {shortage === 0 && giftCount >= capacity && (
                 <small className="shop-lock">礼物袋已满</small>
               )}
@@ -229,5 +220,17 @@ export function BagPanel() {
       <BetaPrivacyPanel />
       <PwaInstallGuide />
     </div>
+  )
+}
+
+function ShopMeter({ value, target, label }: { value: number; target: number; label: string }) {
+  const current = Math.min(value, target)
+  return (
+    <span className="shop-meter">
+      <small>{label} {current}/{target}</small>
+      <i role="progressbar" aria-label={`${label}进度`} aria-valuemin={0} aria-valuemax={target} aria-valuenow={current}>
+        <b style={{ width: `${target > 0 ? current / target * 100 : 0}%` }} />
+      </i>
+    </span>
   )
 }

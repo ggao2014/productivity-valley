@@ -1,7 +1,7 @@
 {
   "name": "Productivity Valley",
   "short_name": "山谷",
-  "description": "做待办，养山谷，交朋友",
+  "description": "完成待办、扩建房间并与角色互动",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

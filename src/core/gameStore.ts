@@ -352,7 +352,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         tasks: [task, ...s.tasks],
         onboardingStep: s.onboardingStep === 1 ? 2 : s.onboardingStep,
-        toast: s.onboardingStep === 1 ? '记下来了。完成它，山谷会回应你。' : s.toast,
+        toast: s.onboardingStep === 1 ? '待办已添加。完成后可领取奖励。' : s.toast,
       }),
     )
   },

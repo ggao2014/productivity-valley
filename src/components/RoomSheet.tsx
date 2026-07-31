@@ -13,11 +13,11 @@ const INTERIORS: Partial<Record<RoomType, string>> = {
 }
 
 const ATMOSPHERE: Partial<Record<RoomType, string>> = {
-  bedroom: '小窗下很安静，适合在一天结束后好好休息。',
-  guest: '床铺和备用被褥都收拾好了，随时欢迎新住客。',
-  kitchen: '炉火、香草和陶罐，让每一顿饭都更从容。',
-  study: '窗边的桌子留给专注时刻，书架也在慢慢长高。',
-  storage: '东西各有位置，日常消耗也因此更节省。',
+  bedroom: '伴侣可入住的房间。',
+  guest: '访客可入住的房间。',
+  kitchen: '降低每日食物维护费用。',
+  study: '提高完成待办获得的精力。',
+  storage: '增加礼物库存容量。',
 }
 
 function publicAsset(path: string) {
