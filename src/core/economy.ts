@@ -9,6 +9,7 @@ import type {
   GameState,
   RomanceStage,
   RoomInstance,
+  Task,
 } from './types'
 
 export function localDayKey(d = new Date()): string {
@@ -16,6 +17,43 @@ export function localDayKey(d = new Date()): string {
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+export function taskCompletedOn(task: Task, dayKey = localDayKey()): boolean {
+  return Boolean(
+    task.done &&
+      task.completedAt &&
+      localDayKey(new Date(task.completedAt)) === dayKey,
+  )
+}
+
+export function todayTaskProgress(tasks: Task[], dayKey = localDayKey()) {
+  return tasks.filter((task) => taskCompletedOn(task, dayKey)).reduce(
+    (progress, task) => ({
+      completed: progress.completed + 1,
+      coins: progress.coins + (task.awardedCoins ?? 0),
+      bond: progress.bond + (task.awardedBond ?? 0),
+    }),
+    { completed: 0, coins: 0, bond: 0 },
+  )
+}
+
+export function activeDayStreak(tasks: Task[], now = new Date()): number {
+  const activeDays = new Set(
+    tasks
+      .filter((task) => task.done && task.completedAt)
+      .map((task) => localDayKey(new Date(task.completedAt!))),
+  )
+  const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (!activeDays.has(localDayKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  let streak = 0
+  while (activeDays.has(localDayKey(cursor))) {
+    streak += 1
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return streak
 }
 
 export function friendshipStage(points: number): FriendshipStage {

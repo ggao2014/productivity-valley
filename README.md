@@ -5,6 +5,7 @@
 ## 设计
 
 - [产品设计文档（锁定 v0.4）](docs/DESIGN.md)
+- [产品路线图](docs/ROADMAP.md)
 
 ## 本地开发
 

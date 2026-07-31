@@ -26,9 +26,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm audit
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
       - run: npm run build
         env:
           VITE_BASE: /productivity-valley/
+      - run: node --check public/sw.js
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

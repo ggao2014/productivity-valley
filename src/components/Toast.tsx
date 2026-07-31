@@ -12,8 +12,16 @@ export function Toast() {
   }, [toast, clearToast])
 
   if (!toast) return null
+  const recovered = toast.includes('自动备份恢复')
   return (
-    <div className="toast" role="status">
+    <div className={`toast${recovered ? ' is-recovery' : ''}`} role="status">
+      {recovered && (
+        <img
+          src={`${import.meta.env.BASE_URL}art/beta/save-recovery-v1.webp`}
+          alt=""
+          draggable={false}
+        />
+      )}
       {toast}
     </div>
   )

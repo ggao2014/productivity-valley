@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   BOND_DAILY_CAP,
   DAILY_LOGIN_BONUS,
+  DECORATION_DEFS,
   GIFT_DEFS,
   HOME_FEE,
   INTERACTIONS_PER_NPC_PER_DAY,
@@ -17,14 +18,22 @@ import {
   localDayKey,
   partnerIds,
   romanceStage,
+  taskCompletedOn,
   totalDailyMaintenance,
 } from './economy'
 import { NPC_DEFS } from './npcs'
-import { loadState, saveState } from './storage'
+import { completionReactionFor, dialogueFor } from './dialogue'
+import { eligibleEventIds } from './events'
+import { loadState, parseImportedState, saveState } from './storage'
+import { earnedMilestones, giftCapacity, inventoryCount } from './growth'
+import { trackBetaEvent } from './beta'
 import type {
+  DialogueKind,
   Difficulty,
   GameState,
+  GiftReaction,
   NpcProgress,
+  OnboardingStep,
   RoomInstance,
   TabId,
   Task,
@@ -44,9 +53,42 @@ function initialNpc(): Record<string, NpcProgress> {
       livingAtHome: false,
       met: n.starter,
       interactionsToday: 0,
+      giftDiscoveries: {},
+      seenDialogueIds: [],
+      unlockedEventIds: [],
     }
   }
   return map
+}
+
+function mergeNpcProgress(
+  saved?: Partial<Record<string, NpcProgress>>,
+): Record<string, NpcProgress> {
+  const defaults = initialNpc()
+  for (const def of NPC_DEFS) {
+    const previous = saved?.[def.id]
+    if (!previous) continue
+    const merged = {
+      ...defaults[def.id],
+      ...previous,
+      giftDiscoveries: {
+        ...defaults[def.id].giftDiscoveries,
+        ...(previous.giftDiscoveries ?? {}),
+      },
+      seenDialogueIds: [...(previous.seenDialogueIds ?? [])],
+      unlockedEventIds: [...(previous.unlockedEventIds ?? [])],
+    }
+    defaults[def.id] = {
+      ...merged,
+      unlockedEventIds: [
+        ...new Set([
+          ...merged.unlockedEventIds,
+          ...eligibleEventIds(def.id, merged),
+        ]),
+      ],
+    }
+  }
+  return defaults
 }
 
 function createInitial(): GameState {
@@ -57,10 +99,21 @@ function createInitial(): GameState {
     rooms: [{ id: uid(), type: 'living', occupantId: null }],
     npc: initialNpc(),
     inventory: [],
+    decorations: [],
+    placedDecorations: [],
+    milestones: [],
     lastDailyKey: '',
     deficitDays: 0,
     toast: null,
+    dialogue: null,
+    rewardFeedback: null,
+    taskReaction: null,
+    valleyRewardReady: false,
+    lastBuiltRoomId: null,
+    onboardingStep: 1,
     selectedNpcId: null,
+    selectedRoomId: null,
+    selectedEventId: null,
     tab: 'valley',
   }
 }
@@ -85,11 +138,46 @@ function maybeUnlockMeet(state: GameState): GameState {
       changed = true
     }
   }
+  for (const [id, progress] of Object.entries(npc)) {
+    const existing = new Set(progress.unlockedEventIds)
+    const additions = eligibleEventIds(id, progress).filter(
+      (eventId) => !existing.has(eventId),
+    )
+    if (additions.length > 0) {
+      npc[id] = {
+        ...progress,
+        unlockedEventIds: [...progress.unlockedEventIds, ...additions],
+      }
+      changed = true
+    }
+  }
   return changed ? { ...state, npc } : state
 }
 
 function persist(state: GameState): GameState {
-  const next = maybeUnlockMeet(state)
+  const unlocked = earnedMilestones(state)
+  const next = maybeUnlockMeet({
+    ...state,
+    milestones: [...new Set([...state.milestones, ...unlocked])],
+  })
+  for (const [npcId, progress] of Object.entries(next.npc)) {
+    const friendship = friendshipStage(progress.friendshipPoints)
+    const romance = romanceStage(
+      progress.romancePoints,
+      progress.romanceUnlocked,
+      progress.livingAtHome,
+    )
+    if (friendship > 0) {
+      trackBetaEvent(
+        'friendship_stage_unlocked',
+        `${npcId}:${friendship}`,
+        true,
+      )
+    }
+    if (romance > 0) {
+      trackBetaEvent('romance_stage_unlocked', `${npcId}:${romance}`, true)
+    }
+  }
   saveState(next)
   return next
 }
@@ -98,12 +186,25 @@ interface Actions {
   hydrate: () => void
   setTab: (tab: TabId) => void
   selectNpc: (id: string | null) => void
+  selectRoom: (id: string | null) => void
+  selectEvent: (id: string | null) => void
   clearToast: () => void
+  clearDialogue: () => void
+  clearRewardFeedback: () => void
+  clearTaskReaction: () => void
+  clearValleyReward: () => void
+  clearLastBuiltRoom: () => void
+  setOnboardingStep: (step: OnboardingStep) => void
+  importSave: (raw: string) => void
   addTask: (title: string, difficulty: Difficulty) => void
+  editTask: (id: string, title: string, difficulty: Difficulty) => void
   completeTask: (id: string) => void
+  undoCompleteTask: (id: string) => void
   deleteTask: (id: string) => void
   buyRoom: (type: RoomInstance['type']) => void
   buyGift: (giftId: string) => void
+  buyDecoration: (decorationId: string) => void
+  toggleDecoration: (decorationId: string) => void
   chat: (npcId: string) => void
   heartTalk: (npcId: string) => void
   unlockRomance: (npcId: string) => void
@@ -119,19 +220,122 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
   ...createInitial(),
 
   hydrate: () => {
-    const saved = loadState()
-    if (!saved) {
-      set(persist({ ...createInitial(), lastDailyKey: localDayKey(), toast: '欢迎！先写个待办吧' }))
+    const loaded = loadState()
+    if (!loaded.state) {
+      set(
+        persist({
+          ...createInitial(),
+          lastDailyKey: localDayKey(),
+          tab: 'tasks',
+          toast:
+            loaded.source === 'corrupt'
+              ? '存档和备份均无法读取，已安全创建新进度'
+              : '欢迎！先写下今天想完成的一件事',
+        }),
+      )
       return
     }
-    const base = { ...createInitial(), ...saved, toast: null }
+    const saved = loaded.state
+    const base = {
+      ...createInitial(),
+      ...saved,
+      npc: mergeNpcProgress(saved.npc),
+      milestones: saved.milestones ?? [],
+      decorations: saved.decorations ?? [],
+      placedDecorations: (saved.placedDecorations ?? []).filter((id) =>
+        (saved.decorations ?? []).includes(id),
+      ),
+      onboardingStep: saved.onboardingStep ?? 0,
+      toast:
+        loaded.source === 'backup'
+          ? '主存档受损，已从自动备份恢复'
+          : loaded.migrated
+            ? '旧存档已安全升级'
+            : null,
+      dialogue: null,
+      rewardFeedback: null,
+      taskReaction: null,
+      valleyRewardReady: false,
+      lastBuiltRoomId: null,
+      selectedNpcId: null,
+      selectedRoomId: null,
+      selectedEventId: null,
+    }
+    if (loaded.source === 'backup' || loaded.migrated) saveState(base)
     set(base)
     get().runDailyIfNeeded()
   },
 
   setTab: (tab) => set({ tab }),
-  selectNpc: (id) => set({ selectedNpcId: id }),
+  selectNpc: (id) =>
+    set({
+      selectedNpcId: id,
+      selectedRoomId: null,
+      selectedEventId: null,
+      dialogue: null,
+    }),
+  selectRoom: (id) =>
+    set({
+      selectedRoomId: id,
+      selectedNpcId: null,
+      selectedEventId: null,
+      dialogue: null,
+    }),
+  selectEvent: (id) => set({ selectedEventId: id }),
   clearToast: () => set({ toast: null }),
+  clearDialogue: () =>
+    set((s) => {
+      const active = s.dialogue
+      if (!active) return s
+      const progress = s.npc[active.npcId]
+      if (!progress || progress.seenDialogueIds.includes(active.entryId)) {
+        return { ...s, dialogue: null }
+      }
+      return persist({
+        ...s,
+        dialogue: null,
+        npc: {
+          ...s.npc,
+          [active.npcId]: {
+            ...progress,
+            seenDialogueIds: [...progress.seenDialogueIds, active.entryId],
+          },
+        },
+      })
+    }),
+  clearRewardFeedback: () => set({ rewardFeedback: null }),
+  clearTaskReaction: () => set({ taskReaction: null }),
+  clearValleyReward: () => set({ valleyRewardReady: false }),
+  clearLastBuiltRoom: () => set({ lastBuiltRoomId: null }),
+  setOnboardingStep: (step) =>
+    set((s) => persist({ ...s, onboardingStep: step })),
+  importSave: (raw) => {
+    try {
+      const imported = parseImportedState(raw)
+      const next = {
+        ...createInitial(),
+        ...imported,
+        npc: mergeNpcProgress(imported.npc),
+        onboardingStep: imported.onboardingStep ?? 0,
+        toast: '存档导入成功',
+        dialogue: null,
+        rewardFeedback: null,
+        taskReaction: null,
+        valleyRewardReady: false,
+        lastBuiltRoomId: null,
+        selectedNpcId: null,
+        selectedRoomId: null,
+        selectedEventId: null,
+        tab: 'valley' as const,
+      }
+      set(persist(next))
+    } catch (error) {
+      set((s) => ({
+        ...s,
+        toast: error instanceof Error ? error.message : '存档导入失败',
+      }))
+    }
+  },
 
   addTask: (title, difficulty) => {
     const t = title.trim()
@@ -143,7 +347,30 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       done: false,
       createdAt: new Date().toISOString(),
     }
-    set((s) => persist({ ...s, tasks: [task, ...s.tasks] }))
+    set((s) =>
+      persist({
+        ...s,
+        tasks: [task, ...s.tasks],
+        onboardingStep: s.onboardingStep === 1 ? 2 : s.onboardingStep,
+        toast: s.onboardingStep === 1 ? '记下来了。完成它，山谷会回应你。' : s.toast,
+      }),
+    )
+  },
+
+  editTask: (id, title, difficulty) => {
+    const cleanTitle = title.trim()
+    if (!cleanTitle) return
+    set((s) =>
+      persist({
+        ...s,
+        tasks: s.tasks.map((task) =>
+          task.id === id && !task.done
+            ? { ...task, title: cleanTitle, difficulty }
+            : task,
+        ),
+        toast: '待办已更新',
+      }),
+    )
   },
 
   completeTask: (id) => {
@@ -161,15 +388,66 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const bondGain = Math.min(reward.bond, Math.max(0, BOND_DAILY_CAP - s.bond))
       const tasks = s.tasks.map((t) =>
         t.id === id
-          ? { ...t, done: true, completedAt: new Date().toISOString() }
+          ? {
+              ...t,
+              done: true,
+              completedAt: new Date().toISOString(),
+              awardedCoins: coins,
+              awardedBond: bondGain,
+            }
           : t,
       )
+      const reaction = completionReactionFor(s, task)
+      const firstCompletion = !s.tasks.some((item) => item.done)
+      if (firstCompletion) {
+        trackBetaEvent('first_task_completed', undefined, true)
+      }
       return persist({
         ...s,
         tasks,
         coins: s.coins + coins,
         bond: s.bond + bondGain,
-        toast: `完成！+${coins} 金币${bondGain ? ` · +${bondGain} 精力` : ''}`,
+        rewardFeedback: { id: uid(), coins, bond: bondGain },
+        taskReaction: {
+          id: uid(),
+          taskId: task.id,
+          ...reaction,
+        },
+        valleyRewardReady: true,
+        onboardingStep: s.onboardingStep === 2 ? 3 : s.onboardingStep,
+        toast: null,
+      })
+    })
+  },
+
+  undoCompleteTask: (id) => {
+    set((s) => {
+      const task = s.tasks.find((item) => item.id === id)
+      if (!task || !taskCompletedOn(task)) {
+        return { ...s, toast: '只能撤销今天完成的待办' }
+      }
+      const coins = task.awardedCoins ?? 0
+      const bond = task.awardedBond ?? 0
+      return persist({
+        ...s,
+        tasks: s.tasks.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                done: false,
+                completedAt: undefined,
+                awardedCoins: undefined,
+                awardedBond: undefined,
+              }
+            : item,
+        ),
+        coins: Math.max(0, s.coins - coins),
+        bond: Math.max(0, s.bond - bond),
+        rewardFeedback: null,
+        taskReaction:
+          s.taskReaction?.taskId === task.id ? null : s.taskReaction,
+        valleyRewardReady: false,
+        toast: '已撤销完成，奖励也已退回',
       })
     })
   },
@@ -187,10 +465,12 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         return { ...s, toast: '金币不够哦' }
       }
       const room: RoomInstance = { id: uid(), type, occupantId: null }
+      trackBetaEvent('room_purchased', type)
       return persist({
         ...s,
         coins: s.coins - def.cost,
         rooms: [...s.rooms, room],
+        lastBuiltRoomId: room.id,
         toast: `买好了：${def.name}`,
       })
     })
@@ -202,6 +482,12 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       if (!def) return s
       if (s.coins < def.cost) {
         return { ...s, toast: '金币不够哦' }
+      }
+      if (inventoryCount(s) >= giftCapacity(s)) {
+        return {
+          ...s,
+          toast: '礼物袋放满了。扩建储藏室可以多放 8 件礼物',
+        }
       }
       const inv = [...s.inventory]
       const existing = inv.find((i) => i.id === giftId)
@@ -216,8 +502,50 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     })
   },
 
+  buyDecoration: (decorationId) => {
+    set((s) => {
+      const def = DECORATION_DEFS.find((item) => item.id === decorationId)
+      if (!def || s.decorations.includes(decorationId)) return s
+      if (s.coins < def.cost) {
+        return { ...s, toast: '金币不够哦' }
+      }
+      return persist({
+        ...s,
+        coins: s.coins - def.cost,
+        decorations: [...s.decorations, decorationId],
+        placedDecorations:
+          s.placedDecorations.length < 6
+            ? [...s.placedDecorations, decorationId]
+            : s.placedDecorations,
+        toast:
+          s.placedDecorations.length < 6
+            ? `${def.name}已经摆进山谷`
+            : `买到了${def.name}，山谷最多同时摆 6 件`,
+      })
+    })
+  },
+
+  toggleDecoration: (decorationId) => {
+    set((s) => {
+      if (!s.decorations.includes(decorationId)) return s
+      const placed = s.placedDecorations.includes(decorationId)
+      if (!placed && s.placedDecorations.length >= 6) {
+        return { ...s, toast: '山谷最多同时摆 6 件装饰，先收起一件吧' }
+      }
+      return persist({
+        ...s,
+        placedDecorations: placed
+          ? s.placedDecorations.filter((id) => id !== decorationId)
+          : [...s.placedDecorations, decorationId],
+        toast: placed ? '装饰已经收好' : '装饰已经摆好',
+      })
+    })
+  },
+
   chat: (npcId) => {
-    set((s) => interact(s, npcId, 1, { friendship: 8, romance: 2 }, '聊了一会儿～'))
+    set((s) =>
+      interact(s, npcId, 1, { friendship: 8, romance: 2 }, 'chat', '友情 +8'),
+    )
   },
 
   heartTalk: (npcId) => {
@@ -226,7 +554,14 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       if (!p || friendshipStage(p.friendshipPoints) < 2) {
         return { ...s, toast: '再熟一点再聊吧' }
       }
-      return interact(s, npcId, 2, { friendship: 14, romance: 4 }, '聊得更近了')
+      return interact(
+        s,
+        npcId,
+        2,
+        { friendship: 14, romance: 4 },
+        'heart',
+        '友情 +14',
+      )
     })
   },
 
@@ -257,7 +592,8 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         bond: s.bond - 2,
         npc,
-        toast: '表白成功！',
+        dialogue: dialogueFor(s, npcId, 'romance', p.interactionsToday),
+        toast: '喜欢线已开启',
       })
     })
   },
@@ -271,9 +607,20 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       if (p.interactionsToday >= INTERACTIONS_PER_NPC_PER_DAY) {
         return { ...s, toast: '今天聊够啦，明天再来' }
       }
-      const liked = def.likedBy.includes(npcId)
-      const friendship = liked ? 6 : 10
-      const romance = liked && p.romanceUnlocked ? 18 : liked ? 4 : 2
+      const reaction: GiftReaction = def.likedBy.includes(npcId)
+        ? 'liked'
+        : def.dislikedBy?.includes(npcId)
+          ? 'disliked'
+          : 'neutral'
+      const friendship =
+        reaction === 'liked' ? 10 : reaction === 'neutral' ? 6 : 1
+      const romance = p.romanceUnlocked
+        ? reaction === 'liked'
+          ? 18
+          : reaction === 'neutral'
+            ? 2
+            : 0
+        : 0
       const inv = s.inventory
         .map((i) => (i.id === giftId ? { ...i, qty: i.qty - 1 } : i))
         .filter((i) => i.qty > 0)
@@ -284,13 +631,32 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           friendshipPoints: p.friendshipPoints + friendship,
           romancePoints: p.romancePoints + romance,
           interactionsToday: p.interactionsToday + 1,
+          giftDiscoveries: {
+            ...p.giftDiscoveries,
+            [giftId]: reaction,
+          },
         },
       }
       return persist({
         ...s,
         inventory: inv,
         npc,
-        toast: liked ? `好喜欢！${def.name}` : `收到了：${def.name}`,
+        dialogue: dialogueFor(
+          s,
+          npcId,
+          reaction === 'liked'
+            ? 'giftLiked'
+            : reaction === 'disliked'
+              ? 'giftDisliked'
+              : 'giftNeutral',
+          p.interactionsToday,
+        ),
+        toast:
+          reaction === 'liked'
+            ? `很喜欢：${def.name}`
+            : reaction === 'disliked'
+              ? `似乎不太喜欢：${def.name}`
+              : `收下了：${def.name}`,
       })
     })
   },
@@ -299,7 +665,14 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     set((s) => {
       const p = s.npc[npcId]
       if (!p?.livingAtHome) return s
-      return interact(s, npcId, 1, { friendship: 4, romance: 12 }, '一起喝了茶')
+      return interact(
+        s,
+        npcId,
+        1,
+        { friendship: 4, romance: 12 },
+        'tea',
+        '喜欢 +12',
+      )
     })
   },
 
@@ -330,6 +703,12 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         coins: s.coins - HOME_FEE,
         rooms,
         npc,
+        dialogue: dialogueFor(
+          { ...s, npc, rooms },
+          npcId,
+          'invite',
+          s.npc[npcId]?.interactionsToday ?? 0,
+        ),
         toast: `${name}搬进来了！${line}`,
       })
     })
@@ -405,6 +784,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     const fresh = {
       ...createInitial(),
       lastDailyKey: localDayKey(),
+      tab: 'tasks' as const,
       toast: '已重置，重新开始！',
     }
     set(persist(fresh))
@@ -416,6 +796,7 @@ function interact(
   npcId: string,
   cost: number,
   gain: { friendship: number; romance: number },
+  kind: DialogueKind,
   okToast: string,
 ): GameState {
   const p = s.npc[npcId]
@@ -434,10 +815,15 @@ function interact(
       interactionsToday: p.interactionsToday + 1,
     },
   }
+  if (s.tasks.some((task) => task.done)) {
+    trackBetaEvent('core_loop_completed', undefined, true)
+  }
   return persist({
     ...s,
     bond: s.bond - cost,
     npc,
+    onboardingStep: s.onboardingStep === 3 ? 4 : s.onboardingStep,
+    dialogue: dialogueFor({ ...s, npc }, npcId, kind, p.interactionsToday),
     toast: okToast,
   })
 }
