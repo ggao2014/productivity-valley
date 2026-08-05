@@ -41,7 +41,7 @@ describe('rooms and maintenance', () => {
     const rooms = [
       { id: 'a', type: 'living', occupantId: null },
       { id: 'b', type: 'kitchen', occupantId: null },
-      { id: 'c', type: 'storage', occupantId: null },
+      { id: 'c', type: 'storage', occupantId: null, level: 3 },
     ] as const
     expect(dailyCostPerPerson([...rooms])).toBe(10.4)
 

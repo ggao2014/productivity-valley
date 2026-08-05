@@ -18,6 +18,11 @@
 | CHAR-SHENDU-SHEET-V2 | `art-source/characters/core/shendu-sheet-v2.png` | 角色设定 | selected | 正背面与五表情 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_CHARACTER_SHEETS_V2.md` | 已作为五态头像、背面状态与事件图的正式参考母图 |
 | CHAR-GUWAN-SHEET-V2 | `art-source/characters/core/guwan-sheet-v2.png` | 角色设定 | selected | 正背面与五表情 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_CHARACTER_SHEETS_V2.md` | 已作为五态头像、背面状态与事件图的正式参考母图 |
 | CHAR-TAOTAO-SHEET-V2 | `art-source/characters/core/taotao-sheet-v2.png` | 角色设定 | selected | 正背面与五表情 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_CHARACTER_SHEETS_V2.md` | 已作为五态头像、背面状态与事件图的正式参考母图 |
+| CHAR-EXTENDED-LINEUPS-V1 | `art-source/characters/extended/extended-lineup-{a,b,c}-v1.png` | 角色基准 | selected | 九位扩展镇民差异化基准 | CHAR-CORE-LINEUP-V3 | `docs/prompts/EXTENDED_NPC_ASSETS_V1.md` | 三组各三人；固定体型、发型、配色与职业道具 |
+| CHAR-EXTENDED-SHEETS-V1 | `art-source/characters/extended/*-sheet-v1.png` | 角色设定 | selected | 九位扩展镇民正背面与五表情 | CHAR-EXTENDED-LINEUPS-V1 | `docs/prompts/EXTENDED_NPC_ASSETS_V1.md` | 青禾至河灯共九张；运行时头像由同母图定点裁切 |
+| CHAR-EXTENDED-EXPRESSIONS-V1 | `public/art/characters/{portraits,expressions}/*-v1.webp` | 对话头像组 | integrated | 九位扩展镇民资料、互动与对话 | CHAR-EXTENDED-SHEETS-V1 | `docs/prompts/EXTENDED_NPC_ASSETS_V1.md` | 每人标准头像 1 张、五态头像 5 张；320×512 WebP |
+| CHAR-EXTENDED-STATES-V1 | `public/art/characters/{sprites,states}/*-v1.webp` | 远景状态组 | integrated | 九位扩展镇民院内待机、离开与搬入 | CHAR-EXTENDED-SHEETS-V1、CHAR-CORE-CHIBI-V1 | `docs/prompts/EXTENDED_NPC_ASSETS_V1.md` | 每人 3 张透明 WebP；3–3.3 头身，远景面部简化 |
+| EVENT-EXTENDED-SET-V1 | `public/art/events/{qinghe,jiangxiaoman,chenshi,linchu,baizhi,suweiming,yueqingshan,wenjiu,hedeng}-{friendship,romance}-v1.webp` | 关系事件插画组 | integrated | 九位扩展镇民友情与爱情回忆 | CHAR-EXTENDED-SHEETS-V1 | `docs/prompts/EXTENDED_NPC_ASSETS_V1.md` | 共 18 张；1200×800 WebP；第一人称在场但不固定玩家外貌 |
 | CHAR-SHENDU-SPRITE-V1 | `public/art/characters/sprites/shendu-sprite-v1.webp` | 远景 sprite | integrated | 山谷可点击角色 | CHAR-CORE-CHIBI-V1 | `docs/prompts/CORE_CHARACTER_SPRITES_V1.md` | 透明 WebP；源 PNG 在 `art-source/characters/sprites-alpha/` |
 | CHAR-GUWAN-SPRITE-V1 | `public/art/characters/sprites/guwan-sprite-v1.webp` | 远景 sprite | integrated | 山谷可点击角色 | CHAR-CORE-CHIBI-V1 | `docs/prompts/CORE_CHARACTER_SPRITES_V1.md` | 透明 WebP；源 PNG 在 `art-source/characters/sprites-alpha/` |
 | CHAR-TAOTAO-SPRITE-V1 | `public/art/characters/sprites/taotao-sprite-v1.webp` | 远景 sprite | integrated | 山谷可点击角色 | CHAR-CORE-CHIBI-V1 | `docs/prompts/CORE_CHARACTER_SPRITES_V1.md` | 透明 WebP；源 PNG 在 `art-source/characters/sprites-alpha/` |
@@ -40,12 +45,14 @@
 | EMPTY-TASKS-V1 | `public/art/empty-states/tasks-empty-v1.webp` | 空状态插画 | integrated | 没有未完成待办 | ENV-VALLEY-BASE-V1 | `docs/prompts/EMPTY_STATES_V1.md` | 空白笔记本、铅笔与新芽 |
 | EMPTY-CHARACTERS-V1 | `public/art/empty-states/characters-empty-v1.webp` | 空状态插画 | integrated | 尚未遇见角色 | ENV-VALLEY-BASE-V1 | `docs/prompts/EMPTY_STATES_V1.md` | 空路径、木桥与未点亮路灯 |
 | CHAR-TRAVELER-PLACEHOLDER-V1 | `public/art/characters/placeholders/traveler-placeholder-v1.webp` | 临时远景剪影 | integrated | 未完成正式素材的已遇见角色 | CHAR-SHENDU-SPRITE-V1 | `docs/prompts/TRAVELER_PLACEHOLDER_V1.md` | 无五官旅人；透明 WebP；正式角色小人完成后逐一替换 |
-| EVENT-SHENDU-FRIENDSHIP-V1 | `public/art/events/shendu-friendship-v1.webp` | 友情事件插画 | integrated | 沈渡友情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 《河岸停一停》；运行时 1200×800 WebP |
-| EVENT-SHENDU-ROMANCE-V1 | `public/art/events/shendu-romance-v1.webp` | 爱情事件插画 | integrated | 沈渡爱情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 《回家的水路》；运行时 1200×800 WebP |
+| EVENT-SHENDU-FRIENDSHIP-V1 | `public/art/events/shendu-friendship-v1.webp` | 友情事件插画 | integrated | 沈渡友情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 旧题《河岸停一停》；文案已改为《五文钱》等琐事线；运行时 1200×800 WebP |
+| EVENT-SHENDU-ROMANCE-V1 | `public/art/events/shendu-romance-v1.webp` | 爱情事件插画 | integrated | 沈渡爱情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 旧题《回家的水路》；文案已改为《漏雨》《蓑衣》等；运行时 1200×800 WebP |
 | EVENT-GUWAN-FRIENDSHIP-V1 | `public/art/events/guwan-friendship-v1.webp` | 友情事件插画 | integrated | 顾晚友情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 《半边伞》；运行时 1200×800 WebP |
 | EVENT-GUWAN-ROMANCE-V1 | `public/art/events/guwan-romance-v1.webp` | 爱情事件插画 | integrated | 顾晚爱情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 《备用钥匙》；运行时 1200×800 WebP |
-| EVENT-TAOTAO-FRIENDSHIP-V1 | `public/art/events/taotao-friendship-v1.webp` | 友情事件插画 | integrated | 桃桃友情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 《歪耳朵兔子》；运行时 1200×800 WebP |
-| EVENT-TAOTAO-ROMANCE-V1 | `public/art/events/taotao-romance-v1.webp` | 爱情事件插画 | integrated | 桃桃爱情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 《最好看的那只》；运行时 1200×800 WebP |
+| EVENT-TAOTAO-FRIENDSHIP-V1 | `public/art/events/taotao-friendship-v1.webp` | 友情事件插画 | integrated | 桃桃旧友情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 已由 V2 替代，保留历史版本 |
+| EVENT-TAOTAO-ROMANCE-V1 | `public/art/events/taotao-romance-v1.webp` | 爱情事件插画 | integrated | 桃桃旧爱情回忆 | CHAR-CORE-LINEUP-V3 | `docs/prompts/CORE_EVENT_ILLUSTRATIONS_V1.md` | 已由 V2 替代，保留历史版本 |
+| EVENT-TAOTAO-FRIENDSHIP-V2 | `public/art/events/taotao-friendship-v2.webp` | 友情事件插画 | integrated | 桃桃新版友情回忆 | CHAR-TAOTAO-SHEET-V2 | `docs/prompts/TAOTAO_EVENT_ILLUSTRATIONS_V2.md` | 文案已改为《凤凰》《张二丫》《大车》；运行时 1200×800 WebP |
+| EVENT-TAOTAO-ROMANCE-V2 | `public/art/events/taotao-romance-v2.webp` | 爱情事件插画 | integrated | 桃桃新版爱情回忆 | EVENT-TAOTAO-FRIENDSHIP-V2 | `docs/prompts/TAOTAO_EVENT_ILLUSTRATIONS_V2.md` | 文案已改为《糖兔子》《首饰店》《留座》；运行时 1200×800 WebP |
 | EXPR-SHENDU-NEUTRAL-V1 | `public/art/characters/expressions/shendu-neutral-v1.webp` | 表情头像 | integrated | 沈渡平静对话 | CHAR-SHENDU-SHEET-V2 | `docs/prompts/CORE_CHARACTER_EXPRESSIONS_V2.md` | 320×512；同母图定点裁切 |
 | EXPR-SHENDU-WARM-V1 | `public/art/characters/expressions/shendu-warm-v1.webp` | 表情头像 | integrated | 沈渡开心对话 | CHAR-SHENDU-SHEET-V2 | `docs/prompts/CORE_CHARACTER_EXPRESSIONS_V2.md` | 320×512；同母图定点裁切 |
 | EXPR-SHENDU-WORRIED-V1 | `public/art/characters/expressions/shendu-worried-v1.webp` | 表情头像 | integrated | 沈渡担心对话 | CHAR-SHENDU-SHEET-V2 | `docs/prompts/CORE_CHARACTER_EXPRESSIONS_V2.md` | 320×512；同母图定点裁切 |
@@ -91,6 +98,10 @@
 | MILESTONE-SET-V1 | `public/art/milestones/*-v1.webp` | 6 件里程碑小插画 | integrated | 山谷成长卡 | ENV-VALLEY-BASE-V1 | `docs/prompts/PHASE3_VALLEY_AND_DECORATIONS_V1.md` | 256×256 透明 WebP；纸本、茶杯与家灯意象 |
 | BETA-COVER-V1 | `public/art/beta/beta-cover-v1.webp` | 测试版封面/分享图 | integrated | 邀请入口与 Open Graph | ENV-VALLEY-BASE-V1 | `docs/prompts/PHASE4_BETA_ASSETS_V1.md` | 1200×630 WebP；待办本、两杯茶与暖窗小屋 |
 | BETA-STATUS-SET-V1 | `public/art/beta/{offline,update,save-recovery,feedback}-v1.webp` | 测试状态插画 | integrated | PWA 状态、存档恢复与反馈 | BETA-COVER-V1 | `docs/prompts/PHASE4_BETA_ASSETS_V1.md` | 320×240 透明 WebP；四状态图集切片 |
+| COURTYARD-POND-V1 | `public/art/landscapes/courtyard-pond-v1.webp` | 院落主景 | integrated | 三级以上院落的池塘院 | COURTYARD-FOUR-SIDED-V1 | `docs/prompts/COURTYARD_LANDSCAPES_V1.md` | 不规则双池面与中轴短石桥；透明 WebP |
+| COURTYARD-OLD-TREE-V1 | `public/art/landscapes/courtyard-old-tree-v1.webp` | 院落主景 | integrated | 二级以上院落的老树院 | COURTYARD-FOUR-SIDED-V1 | `docs/prompts/COURTYARD_LANDSCAPES_V1.md` | 枣树、石凳、裸根与落叶；透明 WebP |
+| COURTYARD-KITCHEN-GARDEN-V1 | `public/art/landscapes/courtyard-kitchen-garden-v1.webp` | 院落主景 | integrated | 二级以上院落的菜园院 | COURTYARD-FOUR-SIDED-V1 | `docs/prompts/COURTYARD_LANDSCAPES_V1.md` | 三组破边菜畦、水沟、竹架；透明 WebP |
+| COURTYARD-GROUND-ACCENTS-V1 | `public/art/landscapes/{kitchen-earth,damp-stones,pathside-stones,mossy-wall,wildflower-ribbon,leaf-litter}-v1.webp` | 地面融合素材 | integrated | 小装饰的语义组合底层 | COURTYARD-FOUR-SIDED-V1 | `docs/prompts/COURTYARD_LANDSCAPES_V1.md` | 六件破边低矮地景；图集源文件与导出脚本一并保留 |
 
 ## 首轮评估
 

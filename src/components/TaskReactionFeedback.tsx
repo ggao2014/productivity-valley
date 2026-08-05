@@ -1,12 +1,10 @@
 import { useEffect } from 'react'
 import { useGameStore } from '../core/gameStore'
 import { NPC_DEFS } from '../core/npcs'
+import { spriteForNpc } from '../core/visualAssets'
 
-const CORE_SPRITES: Record<string, string> = {
-  shendu: 'art/characters/sprites/shendu-sprite-v1.webp',
-  guwan: 'art/characters/sprites/guwan-sprite-v1.webp',
-  taotao: 'art/characters/sprites/taotao-sprite-v1.webp',
-}
+const TRAVELER_PLACEHOLDER =
+  'art/characters/placeholders/traveler-placeholder-v1.webp'
 
 function publicAsset(path: string) {
   return `${import.meta.env.BASE_URL}${path}`
@@ -24,8 +22,8 @@ export function TaskReactionFeedback() {
 
   if (!reaction) return null
   const npc = NPC_DEFS.find((item) => item.id === reaction.npcId)
-  const sprite = CORE_SPRITES[reaction.npcId]
-  if (!npc || !sprite) return null
+  const sprite = spriteForNpc(reaction.npcId) ?? TRAVELER_PLACEHOLDER
+  if (!npc) return null
 
   return (
     <aside key={reaction.id} className="task-reaction" role="status">

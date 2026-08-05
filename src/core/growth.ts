@@ -30,12 +30,23 @@ export function completedTaskCount(tasks: Task[]): number {
 
 export function valleyGrowthPoints(state: GameState): number {
   const tasks = completedTaskCount(state.tasks)
+  const habitDays = state.habits.reduce(
+    (total, habit) =>
+      total + habit.entries.filter((entry) => entry.count >= habit.targetCount).length,
+    0,
+  )
+  const projectBlocks = state.projects.reduce(
+    (total, project) => total + project.blocks.filter((block) => block.done).length,
+    0,
+  )
   const rooms = state.rooms.filter((room) => room.type !== 'living').length
   const friends = Object.values(state.npc).filter(
     (progress) => friendshipStage(progress.friendshipPoints) >= 2,
   ).length
   return (
     tasks +
+    habitDays +
+    projectBlocks * 2 +
     rooms * 4 +
     friends * 3 +
     partnerIds(state).length * 8 +
@@ -97,8 +108,8 @@ export function weeklyProgressAtOffset(
 }
 
 export function giftCapacity(state: Pick<GameState, 'rooms'>): number {
-  const storageRooms = state.rooms.filter((room) => room.type === 'storage').length
-  return 8 + storageRooms * 8
+  const storageLevel = state.rooms.find((room) => room.type === 'storage')?.level ?? 1
+  return 8 + Math.max(0, storageLevel - 1) * 4
 }
 
 export function inventoryCount(state: Pick<GameState, 'inventory'>): number {

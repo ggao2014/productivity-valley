@@ -1,7 +1,7 @@
 interface EmptyStateProps {
   image: string
   title: string
-  detail: string
+  detail?: string
   compact?: boolean
 }
 
@@ -20,7 +20,7 @@ export function EmptyState({
       <img src={publicAsset(image)} alt="" draggable={false} />
       <div>
         <strong>{title}</strong>
-        <p>{detail}</p>
+        {detail && <p>{detail}</p>}
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BagPanel } from './components/BagPanel'
 import { TasksPanel } from './components/TasksPanel'
 import { Toast } from './components/Toast'
@@ -13,8 +13,10 @@ import { GameIcon } from './assets/icons/GameIcon'
 import { BetaFeedback } from './components/BetaFeedback'
 import { recordOpenAndReturns } from './core/beta'
 import { PwaStatus } from './components/PwaStatus'
+import { Handbook } from './components/Handbook'
 
 export default function App() {
+  const [facility, setFacility] = useState<'handbook' | 'storehouse' | 'settings' | null>(null)
   const tab = useGameStore((s) => s.tab)
   const setTab = useGameStore((s) => s.setTab)
   const coins = useGameStore((s) => s.coins)
@@ -41,6 +43,7 @@ export default function App() {
       selectEvent(null)
       selectRoom(null)
       selectNpc(null)
+      setFacility(null)
     }
     window.addEventListener('keydown', closeOverlay)
     return () => window.removeEventListener('keydown', closeOverlay)
@@ -67,9 +70,14 @@ export default function App() {
       </header>
 
       <main id="main-content" className="app-main" tabIndex={-1}>
-        {tab === 'valley' && <ValleyPanel />}
-        {tab === 'tasks' && <TasksPanel />}
-        {tab === 'bag' && <BagPanel />}
+        {tab === 'valley' && (
+          <ValleyPanel
+            onOpenHandbook={() => setFacility('handbook')}
+            onOpenStorehouse={() => setFacility('storehouse')}
+            onOpenDesk={() => setTab('tasks')}
+          />
+        )}
+        {tab === 'tasks' && <TasksPanel onOpenSettings={() => setFacility('settings')} />}
       </main>
 
       <OnboardingGuide />
@@ -91,13 +99,6 @@ export default function App() {
         >
           待办
         </button>
-        <button
-          className={tab === 'bag' ? 'active' : ''}
-          aria-current={tab === 'bag' ? 'page' : undefined}
-          onClick={() => setTab('bag')}
-        >
-          口袋
-        </button>
       </nav>
 
       <Toast />
@@ -105,6 +106,15 @@ export default function App() {
       <NpcSheet />
       <EventSheet />
       <PwaStatus />
+      <Handbook open={facility === 'handbook'} onClose={() => setFacility(null)} />
+      {(facility === 'storehouse' || facility === 'settings') && (
+        <div className="facility-overlay" onClick={() => setFacility(null)}>
+          <section className="facility-dialog" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <button className="handbook-close" onClick={() => setFacility(null)} aria-label="关闭">×</button>
+            <BagPanel mode={facility} />
+          </section>
+        </div>
+      )}
     </div>
   )
 }

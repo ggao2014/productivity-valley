@@ -68,19 +68,18 @@ describe('gentle long-term systems', () => {
     })
   })
 
-  it('gives every storage room eight additional gift slots', () => {
+  it('expands gift capacity as the built-in storehouse is upgraded', () => {
     const state = gameState({
       rooms: [
         { id: 'living', type: 'living', occupantId: null },
-        { id: 'store-a', type: 'storage', occupantId: null },
-        { id: 'store-b', type: 'storage', occupantId: null },
+        { id: 'store-a', type: 'storage', occupantId: null, level: 3 },
       ],
       inventory: [
         { id: 'tea_cake', qty: 3 },
         { id: 'maltose', qty: 2 },
       ],
     })
-    expect(giftCapacity(state)).toBe(24)
+    expect(giftCapacity(state)).toBe(16)
     expect(inventoryCount(state)).toBe(5)
   })
 })

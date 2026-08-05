@@ -11,6 +11,7 @@ import type {
   RoomInstance,
   Task,
 } from './types'
+import { emptyBedCount } from './roomRules'
 
 export function localDayKey(d = new Date()): string {
   const y = d.getFullYear()
@@ -81,10 +82,7 @@ export function hasRoomType(rooms: RoomInstance[], type: string): boolean {
 }
 
 export function emptyBeds(rooms: RoomInstance[]): number {
-  return rooms.filter((r) => {
-    const def = ROOM_DEFS.find((d) => d.type === r.type)
-    return (def?.capacity ?? 0) > 0 && !r.occupantId
-  }).length
+  return emptyBedCount(rooms)
 }
 
 export function partnerIds(state: GameState): string[] {
@@ -98,7 +96,8 @@ export function dailyCostPerPerson(rooms: RoomInstance[]): number {
   let drink: number = BASE_DAILY_COST.drink
   let misc: number = BASE_DAILY_COST.misc
   if (hasRoomType(rooms, 'kitchen')) food = food * 0.8
-  if (hasRoomType(rooms, 'storage')) misc = Math.max(0, misc - 1)
+  const storageLevel = rooms.find((room) => room.type === 'storage')?.level ?? 1
+  if (storageLevel > 1) misc = Math.max(0, misc - (storageLevel - 1) * 0.5)
   return food + drink + misc
 }
 

@@ -1,10 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../gameStore'
 import { gameState, memoryStorage, npcProgress } from './fixtures'
+import { serializeState } from '../storage'
+import { localDayKey } from '../economy'
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', memoryStorage())
   useGameStore.setState(gameState())
+})
+
+describe('built-in facility migration', () => {
+  it('keeps levels, frees courtyard space and refunds old purchases once', () => {
+    const envelope = JSON.parse(serializeState(gameState({
+      coins: 40,
+      lastDailyKey: localDayKey(),
+      rooms: [
+        { id: 'living', type: 'living', occupantId: null, level: 2 },
+        { id: 'study', type: 'study', occupantId: null, level: 2 },
+        { id: 'storage', type: 'storage', occupantId: null, level: 3 },
+        { id: 'bedroom', type: 'bedroom', occupantId: null, level: 1 },
+      ],
+    })))
+    envelope.schemaVersion = 13
+    delete envelope.state.facilityMigrationVersion
+    localStorage.setItem('productivity-valley-v1', JSON.stringify(envelope))
+
+    useGameStore.getState().hydrate()
+    const migrated = useGameStore.getState()
+    expect(migrated.coins).toBe(250)
+    expect(migrated.rooms.find((room) => room.type === 'study')?.level).toBe(2)
+    expect(migrated.rooms.find((room) => room.type === 'storage')?.level).toBe(3)
+    expect(migrated.facilityMigrationVersion).toBe(1)
+
+    useGameStore.getState().hydrate()
+    expect(useGameStore.getState().coins).toBe(250)
+  })
 })
 
 describe('task rewards', () => {
@@ -159,6 +189,34 @@ describe('gift preference discovery', () => {
     expect(useGameStore.getState().npc.shendu.seenDialogueIds).toEqual([])
     expect(useGameStore.getState().npc.shendu.unlockedEventIds).toEqual([])
   })
+
+  it('preserves upgraded rooms and infers a compatible courtyard for v12 saves', () => {
+    const legacy = gameState({
+      rooms: [
+        { id: 'living', type: 'living', occupantId: null, level: 3 },
+        { id: 'bedroom-1', type: 'bedroom', occupantId: null, level: 3 },
+        { id: 'bedroom-2', type: 'bedroom', occupantId: null, level: 2 },
+        { id: 'kitchen', type: 'kitchen', occupantId: null, level: 2 },
+        { id: 'study', type: 'study', occupantId: null, level: 1 },
+      ],
+    })
+    delete (legacy as Partial<typeof legacy>).courtyardLevel
+    localStorage.setItem(
+      'productivity-valley-v1',
+      JSON.stringify({
+        schemaVersion: 12,
+        savedAt: new Date().toISOString(),
+        state: legacy,
+      }),
+    )
+
+    useGameStore.getState().hydrate()
+
+    const state = useGameStore.getState()
+    expect(state.courtyardLevel).toBe(2)
+    expect(state.rooms.find((room) => room.id === 'living')?.level).toBe(3)
+    expect(state.rooms.find((room) => room.id === 'bedroom-1')?.level).toBe(3)
+  })
 })
 
 describe('decorations', () => {
@@ -198,6 +256,37 @@ describe('decorations', () => {
     expect(useGameStore.getState().placedDecorations).toHaveLength(6)
     expect(useGameStore.getState().placedDecorations).not.toContain('water_jar')
     expect(useGameStore.getState().toast).toContain('最多同时摆 6 件')
+  })
+
+  it('buys and switches one courtyard landscape at a time', () => {
+    useGameStore.setState(gameState({
+      coins: 250,
+      courtyardLevel: 2,
+      decorations: [
+        'clay_flowerpot',
+        'bamboo_lantern',
+        'wooden_stool',
+        'reed_basket',
+        'stone_basin',
+        'firewood_bundle',
+      ],
+    }))
+    useGameStore.getState().buyCourtyardLandscape('old_tree')
+    expect(useGameStore.getState()).toMatchObject({
+      coins: 160,
+      ownedLandscapes: ['open', 'old_tree'],
+      courtyardLandscape: 'old_tree',
+    })
+
+    useGameStore.getState().selectCourtyardLandscape('open')
+    expect(useGameStore.getState().courtyardLandscape).toBe('open')
+  })
+
+  it('does not buy a landscape that the current courtyard cannot hold', () => {
+    useGameStore.setState(gameState({ coins: 300, courtyardLevel: 1 }))
+    useGameStore.getState().buyCourtyardLandscape('pond')
+    expect(useGameStore.getState().ownedLandscapes).toEqual(['open'])
+    expect(useGameStore.getState().coins).toBe(300)
   })
 })
 
@@ -328,12 +417,133 @@ describe('cohabiting', () => {
 })
 
 describe('visible room construction', () => {
+  it('expands a full small courtyard into a three-sided courtyard', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 300,
+        courtyardLevel: 1,
+        rooms: [
+          { id: 'living', type: 'living', occupantId: null, level: 1 },
+          { id: 'bedroom-1', type: 'bedroom', occupantId: null, level: 1 },
+          { id: 'bedroom-2', type: 'bedroom', occupantId: null, level: 1 },
+        ],
+      }),
+    )
+    useGameStore.getState().upgradeCourtyard()
+    expect(useGameStore.getState().courtyardLevel).toBe(2)
+    expect(useGameStore.getState().coins).toBe(200)
+  })
+
+  it('does not build beyond the current courtyard capacity', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 500,
+        courtyardLevel: 1,
+        rooms: [
+          { id: 'living', type: 'living', occupantId: null, level: 1 },
+          { id: 'bedroom-1', type: 'bedroom', occupantId: null, level: 1 },
+          { id: 'bedroom-2', type: 'bedroom', occupantId: null, level: 1 },
+        ],
+      }),
+    )
+    useGameStore.getState().buyRoom('guest')
+    expect(useGameStore.getState().rooms).toHaveLength(3)
+    expect(useGameStore.getState().coins).toBe(500)
+  })
+
   it('records the newly built room for the valley unfold animation', () => {
     useGameStore.setState(gameState({ coins: 200 }))
-    useGameStore.getState().buyRoom('study')
+    useGameStore.getState().buyRoom('bedroom')
     const state = useGameStore.getState()
-    expect(state.coins).toBe(50)
-    expect(state.rooms.at(-1)?.type).toBe('study')
+    expect(state.coins).toBe(120)
+    expect(state.rooms.at(-1)?.type).toBe('bedroom')
     expect(state.lastBuiltRoomId).toBe(state.rooms.at(-1)?.id)
+  })
+
+  it('upgrades a room twice and stops charging at the maximum level', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 500,
+        rooms: [
+          { id: 'living-room', type: 'living', occupantId: null, level: 3 },
+          { id: 'bedroom-1', type: 'bedroom', occupantId: 'taotao', level: 1 },
+        ],
+      }),
+    )
+
+    useGameStore.getState().upgradeRoom('bedroom-1')
+    expect(useGameStore.getState().coins).toBe(440)
+    expect(useGameStore.getState().rooms[1].level).toBe(2)
+
+    useGameStore.getState().upgradeRoom('bedroom-1')
+    expect(useGameStore.getState().coins).toBe(320)
+    expect(useGameStore.getState().rooms[1].level).toBe(3)
+
+    useGameStore.getState().upgradeRoom('bedroom-1')
+    expect(useGameStore.getState().coins).toBe(320)
+    expect(useGameStore.getState().rooms[1].level).toBe(3)
+  })
+
+  it('upgrades the player living room through all three levels', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 300,
+        rooms: [
+          { id: 'living-room', type: 'living', occupantId: null, level: 1 },
+        ],
+      }),
+    )
+
+    useGameStore.getState().upgradeRoom('living-room')
+    expect(useGameStore.getState().coins).toBe(250)
+    expect(useGameStore.getState().rooms[0].level).toBe(2)
+
+    useGameStore.getState().upgradeRoom('living-room')
+    expect(useGameStore.getState().coins).toBe(130)
+    expect(useGameStore.getState().rooms[0].level).toBe(3)
+  })
+
+  it('upgrades a bedroom into a three-resident courtyard home', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 500,
+        courtyardLevel: 4,
+        rooms: [
+          { id: 'living', type: 'living', occupantId: null, level: 3 },
+          { id: 'bedroom-1', type: 'bedroom', occupantId: 'shendu', level: 3 },
+        ],
+        npc: {
+          shendu: npcProgress({ livingAtHome: true }),
+          taotao: npcProgress({ romanceUnlocked: true, romancePoints: 120 }),
+        },
+      }),
+    )
+
+    useGameStore.getState().upgradeRoom('bedroom-1')
+    expect(useGameStore.getState().rooms[1]).toMatchObject({
+      level: 4,
+      occupantId: 'shendu',
+      wingOccupantIds: [null, null],
+    })
+
+    useGameStore.getState().invitePartner('taotao')
+    expect(useGameStore.getState().rooms[1].wingOccupantIds).toEqual(['taotao', null])
+    expect(useGameStore.getState().npc.taotao.livingAtHome).toBe(true)
+  })
+
+  it('does not upgrade when there are not enough coins', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 59,
+        rooms: [
+          { id: 'living-room', type: 'living', occupantId: null, level: 3 },
+          { id: 'bedroom-1', type: 'bedroom', occupantId: null, level: 1 },
+        ],
+      }),
+    )
+
+    useGameStore.getState().upgradeRoom('bedroom-1')
+    expect(useGameStore.getState().coins).toBe(59)
+    expect(useGameStore.getState().rooms[1].level).toBe(1)
   })
 })

@@ -6,7 +6,9 @@ import {
   GIFT_DEFS,
   HOME_FEE,
   INTERACTIONS_PER_NPC_PER_DAY,
+  COURTYARD_LEVELS,
   ROOM_DEFS,
+  ROOM_UPGRADE_COSTS,
   STARTING_COINS,
   TASK_REWARDS,
 } from './constants'
@@ -25,8 +27,37 @@ import { NPC_DEFS } from './npcs'
 import { completionReactionFor, dialogueFor } from './dialogue'
 import { eligibleEventIds } from './events'
 import { loadState, parseImportedState, saveState } from './storage'
-import { earnedMilestones, giftCapacity, inventoryCount } from './growth'
+import { earnedMilestones, giftCapacity, inventoryCount, valleyStage } from './growth'
+import {
+  availableLandscape,
+  COURTYARD_LANDSCAPE_DEFS,
+  courtyardLandscapeDef,
+} from './courtyardLandscapes'
 import { trackBetaEvent } from './beta'
+import {
+  assignResident,
+  canAddRoom,
+  canUpgradeBedroomToCourtyard,
+  courtyardCapacityUsed,
+  maxRoomLevel,
+  minimumCourtyardLevel,
+  removeResident,
+  roomResidentIds,
+  roomTypeLimitReached,
+  isBuiltInRoom,
+} from './roomRules'
+import {
+  crossedMilestones,
+  HABIT_REWARD,
+  HABIT_REWARD_SLOTS,
+  HABIT_WEEKLY_REWARD,
+  habitEntryFor,
+  habitWeeklyProgress,
+  mondayKey,
+  nextBlockReward,
+  PROJECT_REWARDS,
+  projectProgress,
+} from './productivity'
 import type {
   DialogueKind,
   Difficulty,
@@ -37,6 +68,13 @@ import type {
   RoomInstance,
   TabId,
   Task,
+  Habit,
+  HabitMode,
+  HabitSchedule,
+  ProjectSize,
+  TaskCategory,
+  CourtyardLevel,
+  CourtyardLandscapeId,
 } from './types'
 
 function uid(): string {
@@ -61,6 +99,24 @@ function initialNpc(): Record<string, NpcProgress> {
   return map
 }
 
+function reconcileGiftDiscoveries(
+  npcId: string,
+  discoveries: Record<string, GiftReaction> | undefined,
+): Record<string, GiftReaction> {
+  return Object.fromEntries(
+    Object.entries(discoveries ?? {}).map(([giftId, previousReaction]) => {
+      const gift = GIFT_DEFS.find((item) => item.id === giftId)
+      if (!gift) return [giftId, previousReaction]
+      const reaction: GiftReaction = gift.likedBy.includes(npcId)
+        ? 'liked'
+        : gift.dislikedBy?.includes(npcId)
+          ? 'disliked'
+          : 'neutral'
+      return [giftId, reaction]
+    }),
+  )
+}
+
 function mergeNpcProgress(
   saved?: Partial<Record<string, NpcProgress>>,
 ): Record<string, NpcProgress> {
@@ -71,10 +127,10 @@ function mergeNpcProgress(
     const merged = {
       ...defaults[def.id],
       ...previous,
-      giftDiscoveries: {
-        ...defaults[def.id].giftDiscoveries,
-        ...(previous.giftDiscoveries ?? {}),
-      },
+      giftDiscoveries: reconcileGiftDiscoveries(
+        def.id,
+        previous.giftDiscoveries,
+      ),
       seenDialogueIds: [...(previous.seenDialogueIds ?? [])],
       unlockedEventIds: [...(previous.unlockedEventIds ?? [])],
     }
@@ -93,14 +149,25 @@ function mergeNpcProgress(
 
 function createInitial(): GameState {
   return {
+    facilityMigrationVersion: 1,
     coins: STARTING_COINS,
     bond: 2,
     tasks: [],
-    rooms: [{ id: uid(), type: 'living', occupantId: null }],
+    habits: [],
+    projects: [],
+    habitRewardSnapshots: {},
+    rooms: [
+      { id: uid(), type: 'living', occupantId: null, level: 1 },
+      { id: uid(), type: 'study', occupantId: null, level: 1 },
+      { id: uid(), type: 'storage', occupantId: null, level: 1 },
+    ],
+    courtyardLevel: 1,
     npc: initialNpc(),
     inventory: [],
     decorations: [],
     placedDecorations: [],
+    ownedLandscapes: ['open'],
+    courtyardLandscape: 'open',
     milestones: [],
     lastDailyKey: '',
     deficitDays: 0,
@@ -116,6 +183,50 @@ function createInitial(): GameState {
     selectedEventId: null,
     tab: 'valley',
   }
+}
+
+function normalizeLandscapes(
+  saved: Partial<GameState>,
+  courtyardLevel: CourtyardLevel,
+): Pick<GameState, 'ownedLandscapes' | 'courtyardLandscape'> {
+  const validIds = new Set(COURTYARD_LANDSCAPE_DEFS.map((item) => item.id))
+  const ownedLandscapes = Array.from(
+    new Set([
+      'open' as const,
+      ...(saved.ownedLandscapes ?? []).filter((id) => validIds.has(id)),
+    ]),
+  )
+  const selected = saved.courtyardLandscape ?? 'open'
+  const courtyardLandscape =
+    validIds.has(selected) &&
+    ownedLandscapes.includes(selected) &&
+    availableLandscape(selected, courtyardLevel)
+      ? selected
+      : 'open'
+  return { ownedLandscapes, courtyardLandscape }
+}
+
+function migrateBuiltInFacilities(saved: Partial<GameState>): {
+  rooms: RoomInstance[]
+  coins: number
+  refund: number
+} {
+  const source = saved.rooms ?? []
+  const migrated = (saved.facilityMigrationVersion ?? 0) >= 1
+  const rooms = source.filter((room, index) => {
+    if (!isBuiltInRoom(room)) return true
+    return source.findIndex((item) => item.type === room.type) === index
+  })
+  let refund = 0
+  for (const type of ['living', 'study', 'storage'] as const) {
+    const existing = rooms.find((room) => room.type === type)
+    if (!existing) {
+      rooms.push({ id: uid(), type, occupantId: null, level: 1 })
+    } else if (!migrated && type !== 'living') {
+      refund += ROOM_DEFS.find((definition) => definition.type === type)?.cost ?? 0
+    }
+  }
+  return { rooms, coins: (saved.coins ?? STARTING_COINS) + refund, refund }
 }
 
 function maybeUnlockMeet(state: GameState): GameState {
@@ -196,15 +307,31 @@ interface Actions {
   clearLastBuiltRoom: () => void
   setOnboardingStep: (step: OnboardingStep) => void
   importSave: (raw: string) => void
-  addTask: (title: string, difficulty: Difficulty) => void
-  editTask: (id: string, title: string, difficulty: Difficulty) => void
+  addTask: (title: string, difficulty: Difficulty, category?: TaskCategory) => void
+  editTask: (id: string, title: string, difficulty: Difficulty, category?: TaskCategory) => void
   completeTask: (id: string) => void
   undoCompleteTask: (id: string) => void
   deleteTask: (id: string) => void
+  addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
+  adjustHabit: (id: string, delta: number) => void
+  archiveHabit: (id: string) => void
+  addProject: (title: string, size: ProjectSize, dueDate?: string, category?: TaskCategory) => void
+  updateProject: (id: string, title: string, dueDate?: string) => void
+  addProjectBlock: (projectId: string, title: string, difficulty: Difficulty) => void
+  deleteProjectBlock: (projectId: string, blockId: string) => void
+  moveProjectBlock: (projectId: string, blockId: string, direction: -1 | 1) => void
+  startProject: (id: string) => void
+  completeProjectBlock: (projectId: string, blockId: string) => void
+  undoProjectBlock: (projectId: string, blockId: string) => void
+  archiveProject: (id: string) => void
   buyRoom: (type: RoomInstance['type']) => void
+  upgradeCourtyard: () => void
+  upgradeRoom: (id: string) => void
   buyGift: (giftId: string) => void
   buyDecoration: (decorationId: string) => void
   toggleDecoration: (decorationId: string) => void
+  buyCourtyardLandscape: (landscapeId: CourtyardLandscapeId) => void
+  selectCourtyardLandscape: (landscapeId: CourtyardLandscapeId) => void
   chat: (npcId: string) => void
   heartTalk: (npcId: string) => void
   unlockRomance: (npcId: string) => void
@@ -214,6 +341,13 @@ interface Actions {
   separatePartner: (npcId: string) => void
   runDailyIfNeeded: () => void
   resetGame: () => void
+  debugSetValues: (values: {
+    coins: number
+    bond: number
+    npcId: string
+    friendship: number
+    romance: number
+  }) => void
 }
 
 export const useGameStore = create<GameState & Actions>((set, get) => ({
@@ -236,21 +370,46 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       return
     }
     const saved = loaded.state
+    const facilities = migrateBuiltInFacilities(saved)
+    const normalizedRooms = facilities.rooms.map((room) => ({
+      ...room,
+      level: room.level ?? 1,
+      ...(room.type === 'bedroom' && room.level === 4
+        ? { wingOccupantIds: room.wingOccupantIds ?? [null, null] }
+        : {}),
+    }))
+    const minimumLevel = minimumCourtyardLevel(normalizedRooms)
+    const courtyardLevel = Math.max(saved.courtyardLevel ?? 1, minimumLevel) as CourtyardLevel
+    const landscapes = normalizeLandscapes(saved, courtyardLevel)
     const base = {
       ...createInitial(),
       ...saved,
+      facilityMigrationVersion: 1,
+      coins: facilities.coins,
+      tasks: (saved.tasks ?? []).map((task) => ({
+        ...task,
+        category: task.category ?? 'errand',
+      })),
+      habits: (saved.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
+      projects: (saved.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
+      rooms: normalizedRooms,
+      courtyardLevel,
+      habitRewardSnapshots: saved.habitRewardSnapshots ?? {},
       npc: mergeNpcProgress(saved.npc),
       milestones: saved.milestones ?? [],
       decorations: saved.decorations ?? [],
       placedDecorations: (saved.placedDecorations ?? []).filter((id) =>
         (saved.decorations ?? []).includes(id),
       ),
+      ...landscapes,
       onboardingStep: saved.onboardingStep ?? 0,
       toast:
         loaded.source === 'backup'
           ? '主存档受损，已从自动备份恢复'
           : loaded.migrated
-            ? '旧存档已安全升级'
+            ? facilities.refund > 0
+              ? `书房与库房已归入基础院落 · 返还 ${facilities.refund} 金币`
+              : '旧存档已安全升级'
             : null,
       dialogue: null,
       rewardFeedback: null,
@@ -312,9 +471,29 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
   importSave: (raw) => {
     try {
       const imported = parseImportedState(raw)
+      const facilities = migrateBuiltInFacilities(imported)
+      const normalizedRooms = facilities.rooms.map((room) => ({
+        ...room,
+        level: room.level ?? 1,
+        ...(room.type === 'bedroom' && room.level === 4
+          ? { wingOccupantIds: room.wingOccupantIds ?? [null, null] }
+          : {}),
+      }))
+      const minimumLevel = minimumCourtyardLevel(normalizedRooms)
+      const courtyardLevel = Math.max(imported.courtyardLevel ?? 1, minimumLevel) as CourtyardLevel
+      const landscapes = normalizeLandscapes(imported, courtyardLevel)
       const next = {
         ...createInitial(),
         ...imported,
+        facilityMigrationVersion: 1,
+        coins: facilities.coins,
+        tasks: (imported.tasks ?? []).map((task) => ({ ...task, category: task.category ?? 'errand' })),
+        habits: (imported.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
+        projects: (imported.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
+        rooms: normalizedRooms,
+        courtyardLevel,
+        ...landscapes,
+        habitRewardSnapshots: imported.habitRewardSnapshots ?? {},
         npc: mergeNpcProgress(imported.npc),
         onboardingStep: imported.onboardingStep ?? 0,
         toast: '存档导入成功',
@@ -337,13 +516,14 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     }
   },
 
-  addTask: (title, difficulty) => {
+  addTask: (title, difficulty, category = 'errand') => {
     const t = title.trim()
     if (!t) return
     const task: Task = {
       id: uid(),
       title: t,
       difficulty,
+      category,
       done: false,
       createdAt: new Date().toISOString(),
     }
@@ -357,7 +537,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     )
   },
 
-  editTask: (id, title, difficulty) => {
+  editTask: (id, title, difficulty, category = 'errand') => {
     const cleanTitle = title.trim()
     if (!cleanTitle) return
     set((s) =>
@@ -365,7 +545,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         tasks: s.tasks.map((task) =>
           task.id === id && !task.done
-            ? { ...task, title: cleanTitle, difficulty }
+            ? { ...task, title: cleanTitle, difficulty, category }
             : task,
         ),
         toast: '待办已更新',
@@ -379,11 +559,12 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       if (!task || task.done) return s
       const reward = TASK_REWARDS[task.difficulty]
       let coins = reward.coins
+      const studyLevel = s.rooms.find((room) => room.type === 'study')?.level ?? 1
       if (
         (task.difficulty === 'medium' || task.difficulty === 'large') &&
-        hasRoomType(s.rooms, 'study')
+        studyLevel > 1
       ) {
-        coins = Math.round(coins * 1.1)
+        coins = Math.round(coins * (studyLevel === 3 ? 1.1 : 1.05))
       }
       const bondGain = Math.min(reward.bond, Math.max(0, BOND_DAILY_CAP - s.bond))
       const tasks = s.tasks.map((t) =>
@@ -407,7 +588,13 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         tasks,
         coins: s.coins + coins,
         bond: s.bond + bondGain,
-        rewardFeedback: { id: uid(), coins, bond: bondGain },
+        rewardFeedback: {
+          id: uid(),
+          coins,
+          bond: bondGain,
+          kind: 'todo',
+          title: task.title,
+        },
         taskReaction: {
           id: uid(),
           taskId: task.id,
@@ -456,15 +643,369 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     set((s) => persist({ ...s, tasks: s.tasks.filter((t) => t.id !== id) }))
   },
 
+  addHabit: (title, mode, targetCount, schedule, category = 'errand') => {
+    const clean = title.trim()
+    if (!clean) return
+    const habit: Habit = {
+      id: uid(),
+      title: clean,
+      mode,
+      targetCount: mode === 'check' ? 1 : Math.max(1, Math.floor(targetCount)),
+      schedule,
+      active: true,
+      createdAt: new Date().toISOString(),
+      entries: [],
+      weeklyRewardKeys: [],
+      category,
+    }
+    set((s) => {
+      const today = localDayKey()
+      const snapshot = s.habitRewardSnapshots[today]
+      return persist({
+        ...s,
+        habits: [...s.habits, habit],
+        habitRewardSnapshots:
+          snapshot && snapshot.length < HABIT_REWARD_SLOTS
+            ? {
+                ...s.habitRewardSnapshots,
+                [today]: [...snapshot, habit.id],
+              }
+            : s.habitRewardSnapshots,
+      })
+    })
+  },
+
+  adjustHabit: (id, delta) => {
+    set((s) => {
+      const habit = s.habits.find((item) => item.id === id)
+      if (!habit || !habit.active) return s
+      const now = new Date()
+      const dayKey = localDayKey(now)
+      const existing = habitEntryFor(habit, dayKey)
+      const beforeCount = existing?.count ?? 0
+      const count = Math.max(0, Math.min(habit.targetCount, beforeCount + delta))
+      if (count === beforeCount) return s
+      const beforeDone = beforeCount >= habit.targetCount
+      const afterDone = count >= habit.targetCount
+      const snapshot =
+        s.habitRewardSnapshots[dayKey] ??
+        s.habits.filter((item) => item.active).slice(0, HABIT_REWARD_SLOTS).map((item) => item.id)
+      let coinsGain = 0
+      let bondGain = 0
+      const canReward = snapshot.includes(id)
+      const firstDailyReward = afterDone && !beforeDone && existing?.awardedCoins === undefined
+      if (canReward && firstDailyReward) {
+        coinsGain += HABIT_REWARD.coins
+        bondGain += Math.min(HABIT_REWARD.bond, Math.max(0, BOND_DAILY_CAP - (s.bond + bondGain)))
+      }
+      const entry = {
+        dayKey,
+        count,
+        completedAt: afterDone ? existing?.completedAt ?? now.toISOString() : undefined,
+        awardedCoins:
+          existing?.awardedCoins ?? (canReward && firstDailyReward ? HABIT_REWARD.coins : undefined),
+        awardedBond:
+          existing?.awardedBond ?? (canReward && firstDailyReward ? bondGain : undefined),
+      }
+      let updatedHabit: Habit = {
+        ...habit,
+        entries: [...habit.entries.filter((item) => item.dayKey !== dayKey), entry],
+      }
+      const weekKey = mondayKey(now)
+      const weekly = habitWeeklyProgress(updatedHabit, now)
+      const weeklyReward =
+        canReward &&
+        weekly.completed >= weekly.target &&
+        !updatedHabit.weeklyRewardKeys.includes(weekKey)
+      if (weeklyReward) {
+        coinsGain += HABIT_WEEKLY_REWARD.coins
+        const weeklyBond = Math.min(
+          HABIT_WEEKLY_REWARD.bond,
+          Math.max(0, BOND_DAILY_CAP - (s.bond + bondGain)),
+        )
+        bondGain += weeklyBond
+        updatedHabit = {
+          ...updatedHabit,
+          weeklyRewardKeys: [...updatedHabit.weeklyRewardKeys, weekKey],
+        }
+      }
+      return persist({
+        ...s,
+        habits: s.habits.map((item) => (item.id === id ? updatedHabit : item)),
+        habitRewardSnapshots: {
+          ...s.habitRewardSnapshots,
+          [dayKey]: snapshot,
+        },
+        coins: s.coins + coinsGain,
+        bond: s.bond + bondGain,
+        rewardFeedback:
+          afterDone && !beforeDone
+            ? {
+                id: uid(),
+                coins: coinsGain,
+                bond: bondGain,
+                kind: 'habit',
+                title: habit.title,
+              }
+            : s.rewardFeedback,
+        valleyRewardReady: afterDone && !beforeDone ? true : s.valleyRewardReady,
+      })
+    })
+  },
+
+  archiveHabit: (id) =>
+    set((s) =>
+      persist({
+        ...s,
+        habits: s.habits.map((habit) =>
+          habit.id === id ? { ...habit, active: false } : habit,
+        ),
+      }),
+    ),
+
+  addProject: (title, size, dueDate, category = 'errand') => {
+    const clean = title.trim()
+    if (!clean) return
+    set((s) =>
+      persist({
+        ...s,
+        projects: [
+          ...s.projects,
+          {
+            id: uid(),
+            title: clean,
+            size,
+            status: 'draft' as const,
+            createdAt: new Date().toISOString(),
+            dueDate: dueDate || undefined,
+            blocks: [],
+            awardedMilestones: [],
+            category,
+          },
+        ],
+      }),
+    )
+  },
+
+  updateProject: (id, title, dueDate) => {
+    const clean = title.trim()
+    if (!clean) return
+    set((s) =>
+      persist({
+        ...s,
+        projects: s.projects.map((project) =>
+          project.id === id
+            ? { ...project, title: clean, dueDate: dueDate || undefined }
+            : project,
+        ),
+      }),
+    )
+  },
+
+  addProjectBlock: (projectId, title, difficulty) => {
+    const clean = title.trim()
+    if (!clean) return
+    set((s) =>
+      persist({
+        ...s,
+        projects: s.projects.map((project) =>
+          project.id === projectId && project.status !== 'completed' && project.status !== 'archived'
+            ? {
+                ...project,
+                blocks: [
+                  ...project.blocks,
+                  {
+                    id: uid(),
+                    title: clean,
+                    difficulty,
+                    done: false,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+              }
+            : project,
+        ),
+      }),
+    )
+  },
+
+  deleteProjectBlock: (projectId, blockId) =>
+    set((s) =>
+      persist({
+        ...s,
+        projects: s.projects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                blocks: project.blocks.filter((block) => block.id !== blockId || block.done),
+              }
+            : project,
+        ),
+      }),
+    ),
+
+  moveProjectBlock: (projectId, blockId, direction) =>
+    set((s) =>
+      persist({
+        ...s,
+        projects: s.projects.map((project) => {
+          if (project.id !== projectId) return project
+          const index = project.blocks.findIndex((block) => block.id === blockId)
+          const target = index + direction
+          if (index < 0 || target < 0 || target >= project.blocks.length) return project
+          const blocks = [...project.blocks]
+          ;[blocks[index], blocks[target]] = [blocks[target], blocks[index]]
+          return { ...project, blocks }
+        }),
+      }),
+    ),
+
+  startProject: (id) =>
+    set((s) => {
+      const project = s.projects.find((item) => item.id === id)
+      if (!project || project.status !== 'draft') return s
+      const minimum = PROJECT_REWARDS[project.size].minBlocks
+      if (project.blocks.length < minimum) {
+        return { ...s, toast: `至少需要 ${minimum} 个分块` }
+      }
+      return persist({
+        ...s,
+        projects: s.projects.map((item) =>
+          item.id === id ? { ...item, status: 'active' } : item,
+        ),
+      })
+    }),
+
+  completeProjectBlock: (projectId, blockId) =>
+    set((s) => {
+      const project = s.projects.find((item) => item.id === projectId)
+      const block = project?.blocks.find((item) => item.id === blockId)
+      if (!project || !block || project.status !== 'active' || block.done) return s
+      const before = projectProgress(project).percent
+      const baseReward = nextBlockReward(project, blockId)
+      const config = PROJECT_REWARDS[project.size]
+      const paidBlockCoins = project.blocks.reduce((sum, item) => sum + (item.awardedCoins ?? 0), 0)
+      const studyLevel = s.rooms.find((room) => room.type === 'study')?.level ?? 1
+      const studyMultiplier = studyLevel === 3 ? 1.1 : studyLevel === 2 ? 1.05 : 1
+      const studyCoins = studyLevel > 1
+        ? Math.min(
+            Math.max(0, config.blockCoins - paidBlockCoins),
+            Math.round(baseReward.coins * studyMultiplier),
+          )
+        : baseReward.coins
+      const blocks = project.blocks.map((item) =>
+        item.id === blockId
+          ? {
+              ...item,
+              done: true,
+              completedAt: new Date().toISOString(),
+              awardedCoins: item.awardedCoins ?? studyCoins,
+              awardedBond: item.awardedBond ?? baseReward.bond,
+            }
+          : item,
+      )
+      const afterProject = { ...project, blocks }
+      const after = projectProgress(afterProject).percent
+      const milestones = crossedMilestones(before, after).filter(
+        (milestone) => !project.awardedMilestones.includes(milestone),
+      )
+      const milestoneReward = milestones.reduce(
+        (sum, milestone) => ({
+          coins: sum.coins + config.milestones[milestone].coins,
+          bond: sum.bond + config.milestones[milestone].bond,
+        }),
+        { coins: 0, bond: 0 },
+      )
+      const coinsGain = (block.awardedCoins === undefined ? studyCoins : 0) + milestoneReward.coins
+      const requestedBond = (block.awardedBond === undefined ? baseReward.bond : 0) + milestoneReward.bond
+      const bondGain = Math.min(requestedBond, Math.max(0, BOND_DAILY_CAP - s.bond))
+      const completed = after >= 100
+      const updatedProject = {
+        ...afterProject,
+        status: completed ? ('completed' as const) : project.status,
+        awardedMilestones: [...project.awardedMilestones, ...milestones],
+      }
+      const reaction = completionReactionFor(s, {
+        id: block.id,
+        title: block.title,
+        difficulty: block.difficulty,
+        done: false,
+        createdAt: block.createdAt,
+      })
+      return persist({
+        ...s,
+        projects: s.projects.map((item) => (item.id === projectId ? updatedProject : item)),
+        coins: s.coins + coinsGain,
+        bond: s.bond + bondGain,
+        rewardFeedback: {
+          id: uid(),
+          coins: coinsGain,
+          bond: bondGain,
+          kind: completed
+            ? 'project_complete'
+            : milestones.length > 0
+              ? 'project_milestone'
+              : 'project_block',
+          title: completed ? project.title : block.title,
+          progressBefore: before,
+          progressAfter: after,
+        },
+        taskReaction: { id: uid(), taskId: block.id, ...reaction },
+        valleyRewardReady: true,
+      })
+    }),
+
+  undoProjectBlock: (projectId, blockId) =>
+    set((s) => {
+      const project = s.projects.find((item) => item.id === projectId)
+      const block = project?.blocks.find((item) => item.id === blockId)
+      if (!project || !block?.done || !block.completedAt || localDayKey(new Date(block.completedAt)) !== localDayKey()) {
+        return { ...s, toast: '只能撤销今天完成的分块' }
+      }
+      return persist({
+        ...s,
+        projects: s.projects.map((item) =>
+          item.id === projectId
+            ? {
+                ...item,
+                status: 'active',
+                blocks: item.blocks.map((part) =>
+                  part.id === blockId
+                    ? { ...part, done: false, completedAt: undefined }
+                    : part,
+                ),
+              }
+            : item,
+        ),
+        toast: '已撤销进度，奖励不会重复发放',
+      })
+    }),
+
+  archiveProject: (id) =>
+    set((s) =>
+      persist({
+        ...s,
+        projects: s.projects.map((project) =>
+          project.id === id ? { ...project, status: 'archived' } : project,
+        ),
+      }),
+    ),
+
   buyRoom: (type) => {
     set((s) => {
       const def = ROOM_DEFS.find((r) => r.type === type)
       if (!def || def.cost <= 0) return s
-      if (type === 'living') return s
+      if (isBuiltInRoom(type)) return s
+      if (roomTypeLimitReached(s.rooms, type)) {
+        return { ...s, toast: `已经有${def.name}` }
+      }
+      if (!canAddRoom(s.rooms, s.courtyardLevel, type)) {
+        return { ...s, toast: '院子满了' }
+      }
       if (s.coins < def.cost) {
         return { ...s, toast: '金币不够哦' }
       }
-      const room: RoomInstance = { id: uid(), type, occupantId: null }
+      const room: RoomInstance = { id: uid(), type, occupantId: null, level: 1 }
       trackBetaEvent('room_purchased', type)
       return persist({
         ...s,
@@ -472,6 +1013,70 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         rooms: [...s.rooms, room],
         lastBuiltRoomId: room.id,
         toast: `买好了：${def.name}`,
+      })
+    })
+  },
+
+  upgradeCourtyard: () => {
+    set((s) => {
+      const current = COURTYARD_LEVELS[s.courtyardLevel]
+      if (s.courtyardLevel >= 4 || current.upgradeCost === null) {
+        return { ...s, toast: '已经是二进院' }
+      }
+      const used = courtyardCapacityUsed(s.rooms)
+      if (used < current.capacity) {
+        return { ...s, toast: `${used}/${current.capacity}` }
+      }
+      if (s.coins < current.upgradeCost) {
+        return { ...s, toast: `还差 ${current.upgradeCost - s.coins} 金币` }
+      }
+      const nextLevel = (s.courtyardLevel + 1) as CourtyardLevel
+      return persist({
+        ...s,
+        coins: s.coins - current.upgradeCost,
+        courtyardLevel: nextLevel,
+        valleyRewardReady: true,
+        toast: `扩建完成 · ${COURTYARD_LEVELS[nextLevel].name}`,
+      })
+    })
+  },
+
+  upgradeRoom: (id) => {
+    set((s) => {
+      const room = s.rooms.find((item) => item.id === id)
+      if (!room) return s
+      const level = room.level ?? 1
+      const maxLevel = maxRoomLevel(room.type)
+      if (level >= maxLevel) return { ...s, toast: '已经升到最高级' }
+      if (
+        room.type === 'bedroom' &&
+        level === 3 &&
+        !canUpgradeBedroomToCourtyard(s.rooms, s.courtyardLevel, room.id)
+      ) {
+        if (s.courtyardLevel < 4) return { ...s, toast: '需要二进院宅地' }
+        if (s.rooms.some((item) => item.type === 'bedroom' && item.level === 4)) {
+          return { ...s, toast: '院居宅地已使用' }
+        }
+        return { ...s, toast: '请空出两个宅地' }
+      }
+      const cost = ROOM_UPGRADE_COSTS[room.type][level as 1 | 2 | 3]
+      if (cost === undefined) return { ...s, toast: '已经升到最高级' }
+      if (s.coins < cost) return { ...s, toast: `还差 ${cost - s.coins} 金币` }
+      const nextLevel = (level + 1) as 2 | 3 | 4
+      return persist({
+        ...s,
+        coins: s.coins - cost,
+        rooms: s.rooms.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                level: nextLevel,
+                ...(nextLevel === 4 ? { wingOccupantIds: [null, null] as [null, null] } : {}),
+              }
+            : item,
+        ),
+        lastBuiltRoomId: id,
+        toast: `房间升级完成 · ${nextLevel} 级`,
       })
     })
   },
@@ -538,6 +1143,43 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           ? s.placedDecorations.filter((id) => id !== decorationId)
           : [...s.placedDecorations, decorationId],
         toast: placed ? '装饰已经收好' : '装饰已经摆好',
+      })
+    })
+  },
+
+  buyCourtyardLandscape: (landscapeId) => {
+    set((s) => {
+      const def = courtyardLandscapeDef(landscapeId)
+      if (def.id === 'open' || s.ownedLandscapes.includes(def.id)) return s
+      if (!availableLandscape(def.id, s.courtyardLevel)) {
+        return { ...s, toast: `需要${def.minCourtyardLevel}级院落` }
+      }
+      if (valleyStage(s) < def.stage) {
+        return { ...s, toast: '山谷成长还不够' }
+      }
+      if (s.coins < def.cost) return { ...s, toast: '金币不够哦' }
+      return persist({
+        ...s,
+        coins: s.coins - def.cost,
+        ownedLandscapes: [...s.ownedLandscapes, def.id],
+        courtyardLandscape: def.id,
+        toast: `${def.name}已经布置好`,
+      })
+    })
+  },
+
+  selectCourtyardLandscape: (landscapeId) => {
+    set((s) => {
+      if (!s.ownedLandscapes.includes(landscapeId)) return s
+      if (!availableLandscape(landscapeId, s.courtyardLevel)) {
+        return { ...s, toast: '当前院落放不下这套主景' }
+      }
+      if (s.courtyardLandscape === landscapeId) return s
+      const def = courtyardLandscapeDef(landscapeId)
+      return persist({
+        ...s,
+        courtyardLandscape: landscapeId,
+        toast: `已换成${def.name}`,
       })
     })
   },
@@ -684,13 +1326,10 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           toast: '要超喜欢 + 空房 + 20 金币哦',
         }
       }
-      const bed = s.rooms.find((r) => {
-        const def = ROOM_DEFS.find((d) => d.type === r.type)
-        return (def?.capacity ?? 0) > 0 && !r.occupantId
-      })
+      const bed = s.rooms.find((room) => roomResidentIds(room).some((id) => !id))
       if (!bed) return s
-      const rooms = s.rooms.map((r) =>
-        r.id === bed.id ? { ...r, occupantId: npcId } : r,
+      const rooms = s.rooms.map((room) =>
+        room.id === bed.id ? assignResident(room, npcId) ?? room : room,
       )
       const npc = {
         ...s.npc,
@@ -719,7 +1358,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const p = s.npc[npcId]
       if (!p?.livingAtHome) return s
       const rooms = s.rooms.map((r) =>
-        r.occupantId === npcId ? { ...r, occupantId: null } : r,
+        roomResidentIds(r).includes(npcId) ? removeResident(r, npcId) : r,
       )
       const npc = {
         ...s.npc,
@@ -767,6 +1406,13 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           { ...p, interactionsToday: 0 },
         ]),
       )
+      const habitRewardSnapshots = {
+        ...s.habitRewardSnapshots,
+        [today]: s.habits
+          .filter((habit) => habit.active)
+          .slice(0, HABIT_REWARD_SLOTS)
+          .map((habit) => habit.id),
+      }
 
       return persist({
         ...s,
@@ -774,6 +1420,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         bond: Math.min(BOND_DAILY_CAP, s.bond + 1),
         deficitDays,
         lastDailyKey: today,
+        habitRewardSnapshots,
         npc,
         toast,
       })
@@ -788,6 +1435,30 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       toast: '已重置，重新开始！',
     }
     set(persist(fresh))
+  },
+
+  debugSetValues: ({ coins, bond, npcId, friendship, romance }) => {
+    if (!import.meta.env.DEV) return
+    set((s) => {
+      const progress = s.npc[npcId]
+      if (!progress) return s
+      return persist({
+        ...s,
+        coins: Math.max(0, Math.floor(coins)),
+        bond: Math.max(0, Math.min(BOND_DAILY_CAP, Math.floor(bond))),
+        npc: {
+          ...s.npc,
+          [npcId]: {
+            ...progress,
+            met: true,
+            friendshipPoints: Math.max(0, Math.floor(friendship)),
+            romancePoints: Math.max(0, Math.floor(romance)),
+            romanceUnlocked: progress.romanceUnlocked || romance > 0,
+          },
+        },
+        toast: '测试数值已更新',
+      })
+    })
   },
 }))
 

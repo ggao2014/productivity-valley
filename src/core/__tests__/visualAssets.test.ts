@@ -6,6 +6,11 @@ import {
 } from '../visualAssets'
 import type { DialogueTone } from '../types'
 import { DECORATION_DEFS } from '../constants'
+import { NPC_DEFS } from '../npcs'
+import {
+  COURTYARD_LANDSCAPE_DEFS,
+  courtyardLandscapePlacement,
+} from '../courtyardLandscapes'
 
 const TONES: DialogueTone[] = [
   'neutral',
@@ -15,9 +20,9 @@ const TONES: DialogueTone[] = [
   'shy',
 ]
 
-describe('core character expression assets', () => {
-  it('provides all five tones for every core character', () => {
-    for (const npcId of ['shendu', 'guwan', 'taotao']) {
+describe('character expression assets', () => {
+  it('provides all five tones for every character', () => {
+    for (const { id: npcId } of NPC_DEFS) {
       expect(Object.keys(CORE_EXPRESSION_PORTRAITS[npcId] ?? {}).sort()).toEqual(
         [...TONES].sort(),
       )
@@ -36,8 +41,8 @@ describe('core character expression assets', () => {
     expect(portraitForNpc('not-core')).toBeUndefined()
   })
 
-  it('provides idle, walking-away and move-in sprites for every core character', () => {
-    for (const npcId of ['shendu', 'guwan', 'taotao']) {
+  it('provides idle, walking-away and move-in sprites for every character', () => {
+    for (const { id: npcId } of NPC_DEFS) {
       expect(spriteForNpc(npcId)).toBe(
         `art/characters/sprites/${npcId}-sprite-v1.webp`,
       )
@@ -60,6 +65,22 @@ describe('phase 3 decoration catalog', () => {
       expect(item.cost).toBeGreaterThan(0)
       expect(item.stage).toBeGreaterThanOrEqual(1)
       expect(item.stage).toBeLessThanOrEqual(3)
+    }
+  })
+})
+
+describe('courtyard landscape catalog', () => {
+  it('ships three versioned illustrated main scenes plus the open yard', () => {
+    expect(COURTYARD_LANDSCAPE_DEFS.map((item) => item.id)).toEqual([
+      'open',
+      'old_tree',
+      'kitchen_garden',
+      'pond',
+    ])
+    for (const item of COURTYARD_LANDSCAPE_DEFS.slice(1)) {
+      expect(item.asset).toMatch(/-v1\.webp$/)
+      expect(item.cost).toBeGreaterThan(0)
+      expect(courtyardLandscapePlacement(item.id, item.minCourtyardLevel)).not.toBeNull()
     }
   })
 })

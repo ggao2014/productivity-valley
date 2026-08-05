@@ -1,24 +1,19 @@
-import { useEffect } from 'react'
-import { ROOM_DEFS } from '../core/constants'
+import { useEffect, useState } from 'react'
+import { ROOM_DEFS, ROOM_LEVEL_LABELS, ROOM_UPGRADE_COSTS } from '../core/constants'
 import { NPC_DEFS } from '../core/npcs'
 import { useGameStore } from '../core/gameStore'
-import type { RoomType } from '../core/types'
-
-const INTERIORS: Partial<Record<RoomType, string>> = {
-  bedroom: 'art/rooms/interiors/bedroom-interior-v1.webp',
-  guest: 'art/rooms/interiors/guest-interior-v1.webp',
-  kitchen: 'art/rooms/interiors/kitchen-interior-v1.webp',
-  study: 'art/rooms/interiors/study-interior-v1.webp',
-  storage: 'art/rooms/interiors/storage-interior-v1.webp',
-}
-
-const ATMOSPHERE: Partial<Record<RoomType, string>> = {
-  bedroom: '伴侣可入住的房间。',
-  guest: '访客可入住的房间。',
-  kitchen: '降低每日食物维护费用。',
-  study: '提高完成待办获得的精力。',
-  storage: '增加礼物库存容量。',
-}
+import {
+  BEDROOM_SECTION_INTERIOR_ASSETS,
+  roomInteriorAsset,
+} from '../core/roomAssets'
+import {
+  BEDROOM_SECTIONS,
+  bedroomSectionResident,
+  canUpgradeBedroomToCourtyard,
+  isCourtyardBedroom,
+  maxRoomLevel,
+} from '../core/roomRules'
+import type { BedroomSection } from '../core/types'
 
 function publicAsset(path: string) {
   return `${import.meta.env.BASE_URL}${path}`
@@ -30,6 +25,11 @@ export function RoomSheet() {
     id ? state.rooms.find((item) => item.id === id) : undefined,
   )
   const selectRoom = useGameStore((state) => state.selectRoom)
+  const upgradeRoom = useGameStore((state) => state.upgradeRoom)
+  const coins = useGameStore((state) => state.coins)
+  const rooms = useGameStore((state) => state.rooms)
+  const courtyardLevel = useGameStore((state) => state.courtyardLevel)
+  const [section, setSection] = useState<BedroomSection>('main')
 
   useEffect(() => {
     if (!id) return
@@ -40,48 +40,106 @@ export function RoomSheet() {
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [id, selectRoom])
 
+  useEffect(() => setSection('main'), [id])
+
   if (!room) return null
   const def = ROOM_DEFS.find((item) => item.type === room.type)
-  const interior = INTERIORS[room.type]
-  if (!def || !interior) return null
-  const occupant = room.occupantId
-    ? NPC_DEFS.find((npc) => npc.id === room.occupantId)
+  const level = room.level ?? 1
+  if (!def) return null
+  const compound = isCourtyardBedroom(room)
+  const selectedResidentId = compound
+    ? bedroomSectionResident(room, section)
+    : room.occupantId
+  const occupant = selectedResidentId
+    ? NPC_DEFS.find((npc) => npc.id === selectedResidentId)
     : null
+  const interior = compound
+    ? BEDROOM_SECTION_INTERIOR_ASSETS[section]
+    : roomInteriorAsset(room.type, level)
+  const displayName = occupant
+    ? `${occupant.name}的房间`
+    : room.type === 'bedroom' || room.type === 'guest'
+      ? '空房间'
+      : def.name
+  const maxLevel = maxRoomLevel(room.type)
+  const upgradeCost = level < maxLevel
+    ? ROOM_UPGRADE_COSTS[room.type][level as 1 | 2 | 3]
+    : undefined
+  const courtyardUpgradeAvailable = room.type !== 'bedroom' || level !== 3 ||
+    canUpgradeBedroomToCourtyard(rooms, courtyardLevel, room.id)
+  const upgradeDisabled = upgradeCost !== undefined &&
+    (coins < upgradeCost || !courtyardUpgradeAvailable)
+  const upgradeHint = !courtyardUpgradeAvailable
+    ? courtyardLevel < 4
+      ? '需要二进院宅地'
+      : '需要空出两个宅地'
+    : upgradeCost !== undefined && coins < upgradeCost
+      ? `还差 ${upgradeCost - coins} 金币`
+      : undefined
 
   return (
     <div className="sheet room-sheet" onClick={() => selectRoom(null)}>
       <article
-        className="sheet-card room-sheet-card"
+        className={`sheet-card room-sheet-card room-level-${level}`}
         aria-labelledby="room-sheet-title"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="room-interior-hero">
           <img
             src={publicAsset(interior)}
-            alt={`${def.name}室内`}
+            alt={`${displayName}室内`}
             loading="lazy"
             decoding="async"
             draggable={false}
           />
           <div className="room-interior-title">
-            <span>山谷小屋</span>
-            <h2 id="room-sheet-title">{def.name}</h2>
+            <span>{ROOM_LEVEL_LABELS[level]} · {level}/{maxLevel}</span>
+            <h2 id="room-sheet-title">{displayName}</h2>
           </div>
         </div>
         <div className="room-sheet-body">
-          <p className="room-atmosphere">{ATMOSPHERE[room.type]}</p>
-          <div className="room-facts">
-            <div>
-              <span>房间作用</span>
-              <strong>{def.blurb}</strong>
-            </div>
-            {def.capacity > 0 && (
-              <div>
-                <span>现在住着</span>
-                <strong>{occupant?.name ?? '还没有人'}</strong>
+          {compound && (
+            <nav className="bedroom-section-tabs" aria-label="院居房间">
+              {BEDROOM_SECTIONS.map((item) => {
+                const residentId = bedroomSectionResident(room, item.id)
+                const resident = residentId
+                  ? NPC_DEFS.find((npc) => npc.id === residentId)
+                  : null
+                return (
+                  <button
+                    type="button"
+                    className={section === item.id ? 'active' : ''}
+                    aria-current={section === item.id ? 'page' : undefined}
+                    onClick={() => setSection(item.id)}
+                    key={item.id}
+                  >
+                    <strong>{item.label}</strong>
+                    <small>{resident?.name ?? '空'}</small>
+                  </button>
+                )
+              })}
+            </nav>
+          )}
+          {def.capacity === 0 && room.type !== 'living' && (
+            <p className="room-atmosphere">{def.blurb}</p>
+          )}
+          {upgradeCost !== undefined && (
+            <section className="room-upgrade-panel" aria-label="房间升级">
+              <div className="room-level-dots" aria-label={`房间等级 ${level}/${maxLevel}`}>
+                {Array.from({ length: maxLevel }, (_, index) => index + 1).map((value) => (
+                  <i className={value <= level ? 'active' : ''} key={value} />
+                ))}
               </div>
-            )}
-          </div>
+              <button
+                className="btn"
+                disabled={upgradeDisabled}
+                title={upgradeHint}
+                onClick={() => upgradeRoom(room.id)}
+              >
+                升级 · {upgradeCost} 金币
+              </button>
+            </section>
+          )}
           <button className="btn secondary room-close" onClick={() => selectRoom(null)}>
             回到山谷
           </button>

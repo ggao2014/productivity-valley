@@ -2,7 +2,7 @@ import type { GameState } from './types'
 
 const KEY = 'productivity-valley-v1'
 const BACKUP_KEY = 'productivity-valley-backup-v1'
-const CURRENT_SCHEMA_VERSION = 8
+const CURRENT_SCHEMA_VERSION = 15
 
 type PersistedState = Omit<
   GameState,
@@ -55,6 +55,33 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
       (!Array.isArray(items) || !items.every((id) => typeof id === 'string'))
     ) return false
   }
+  if (
+    value.ownedLandscapes !== undefined &&
+    (!Array.isArray(value.ownedLandscapes) ||
+      !value.ownedLandscapes.every((id) =>
+        ['open', 'pond', 'old_tree', 'kitchen_garden'].includes(String(id)),
+      ))
+  ) return false
+  if (
+    value.courtyardLandscape !== undefined &&
+    !['open', 'pond', 'old_tree', 'kitchen_garden'].includes(
+      String(value.courtyardLandscape),
+    )
+  ) return false
+  if (value.habits !== undefined && !Array.isArray(value.habits)) return false
+  if (value.projects !== undefined && !Array.isArray(value.projects)) return false
+  if (
+    value.courtyardLevel !== undefined &&
+    ![1, 2, 3, 4].includes(Number(value.courtyardLevel))
+  ) return false
+  if (
+    value.habitRewardSnapshots !== undefined &&
+    !isRecord(value.habitRewardSnapshots)
+  ) return false
+  if (
+    value.facilityMigrationVersion !== undefined &&
+    !isFiniteNumber(value.facilityMigrationVersion)
+  ) return false
 
   const tasksOk = value.tasks.every(
     (task) =>
@@ -64,6 +91,8 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
       ['small', 'medium', 'large'].includes(String(task.difficulty)) &&
       typeof task.done === 'boolean' &&
       typeof task.createdAt === 'string' &&
+      (task.category === undefined ||
+        ['work', 'study', 'life', 'health', 'errand'].includes(String(task.category))) &&
       (task.completedAt === undefined || typeof task.completedAt === 'string') &&
       (task.awardedCoins === undefined || isFiniteNumber(task.awardedCoins)) &&
       (task.awardedBond === undefined || isFiniteNumber(task.awardedBond)),
@@ -75,7 +104,14 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
       ['living', 'bedroom', 'guest', 'kitchen', 'study', 'storage'].includes(
         String(room.type),
       ) &&
-      (room.occupantId === null || typeof room.occupantId === 'string'),
+      (room.occupantId === null || typeof room.occupantId === 'string') &&
+      (room.wingOccupantIds === undefined ||
+        (Array.isArray(room.wingOccupantIds) &&
+          room.wingOccupantIds.length === 2 &&
+          room.wingOccupantIds.every((id) => id === null || typeof id === 'string'))) &&
+      (room.level === undefined ||
+        [1, 2, 3].includes(Number(room.level)) ||
+        (room.type === 'bedroom' && Number(room.level) === 4)),
   )
   const npcOk = Object.values(value.npc).every(
     (npc) =>
@@ -105,8 +141,61 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
       isFiniteNumber(item.qty) &&
       item.qty > 0,
   )
+  const habitsOk = (value.habits ?? []).every(
+    (habit) =>
+      isRecord(habit) &&
+      typeof habit.id === 'string' &&
+      typeof habit.title === 'string' &&
+      ['check', 'count'].includes(String(habit.mode)) &&
+      isFiniteNumber(habit.targetCount) &&
+      isRecord(habit.schedule) &&
+      ['daily', 'weekdays', 'selected', 'weekly'].includes(
+        String(habit.schedule.type),
+      ) &&
+      typeof habit.active === 'boolean' &&
+      typeof habit.createdAt === 'string' &&
+      Array.isArray(habit.entries) &&
+      Array.isArray(habit.weeklyRewardKeys) &&
+      (habit.category === undefined ||
+        ['work', 'study', 'life', 'health', 'errand'].includes(String(habit.category))),
+  )
+  const projectsOk = (value.projects ?? []).every(
+    (project) =>
+      isRecord(project) &&
+      typeof project.id === 'string' &&
+      typeof project.title === 'string' &&
+      ['small', 'medium', 'large'].includes(String(project.size)) &&
+      ['draft', 'active', 'completed', 'archived'].includes(
+        String(project.status),
+      ) &&
+      typeof project.createdAt === 'string' &&
+      (project.category === undefined ||
+        ['work', 'study', 'life', 'health', 'errand'].includes(String(project.category))) &&
+      Array.isArray(project.blocks) &&
+      project.blocks.every(
+        (block) =>
+          isRecord(block) &&
+          typeof block.id === 'string' &&
+          typeof block.title === 'string' &&
+          ['small', 'medium', 'large'].includes(String(block.difficulty)) &&
+          typeof block.done === 'boolean' &&
+          typeof block.createdAt === 'string',
+      ) &&
+      Array.isArray(project.awardedMilestones),
+  )
+  const snapshotsOk = Object.values(value.habitRewardSnapshots ?? {}).every(
+    (ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string'),
+  )
 
-  return tasksOk && roomsOk && npcOk && inventoryOk
+  return (
+    tasksOk &&
+    roomsOk &&
+    npcOk &&
+    inventoryOk &&
+    habitsOk &&
+    projectsOk &&
+    snapshotsOk
+  )
 }
 
 function decode(raw: string): { state: Partial<GameState>; migrated: boolean } {

@@ -11,7 +11,7 @@ beforeEach(() => {
 })
 
 describe('versioned saves', () => {
-  it('writes schema v8 and excludes transient interface state', () => {
+  it('writes schema v15 and excludes transient interface state', () => {
     const raw = serializeState(
       gameState({
         toast: 'temporary',
@@ -30,7 +30,7 @@ describe('versioned saves', () => {
       }),
     )
     const parsed = JSON.parse(raw)
-    expect(parsed.schemaVersion).toBe(8)
+    expect(parsed.schemaVersion).toBe(15)
     expect(parsed.state.toast).toBeUndefined()
     expect(parsed.state.selectedNpcId).toBeUndefined()
     expect(parsed.state.selectedRoomId).toBeUndefined()
@@ -71,5 +71,31 @@ describe('versioned saves', () => {
         JSON.stringify({ schemaVersion: 99, state: gameState() }),
       ),
     ).toThrow('这个存档来自更新版本')
+  })
+
+  it('accepts a level-four bedroom compound but rejects level-four utility rooms', () => {
+    const compoundSave = gameState({
+      courtyardLevel: 4,
+      rooms: [
+        { id: 'living', type: 'living', occupantId: null, level: 3 },
+        {
+          id: 'compound',
+          type: 'bedroom',
+          occupantId: null,
+          wingOccupantIds: [null, null],
+          level: 4,
+        },
+      ],
+    })
+
+    expect(parseImportedState(serializeState(compoundSave)).rooms).toEqual(
+      compoundSave.rooms,
+    )
+
+    const invalid = JSON.parse(serializeState(compoundSave))
+    invalid.state.rooms[1].type = 'kitchen'
+    expect(() => parseImportedState(JSON.stringify(invalid))).toThrow(
+      '存档内容不完整',
+    )
   })
 })

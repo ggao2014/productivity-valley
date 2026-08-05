@@ -1,4 +1,4 @@
-import type { Difficulty, FriendshipStage, RomanceStage, RoomType } from './types'
+import type { CourtyardLevel, Difficulty, FriendshipStage, RomanceStage, RoomLevel, RoomType } from './types'
 
 export const STARTING_COINS = 40
 export const BOND_DAILY_CAP = 10
@@ -46,10 +46,10 @@ export interface RoomDef {
 export const ROOM_DEFS: RoomDef[] = [
   {
     type: 'living',
-    name: '客厅',
+    name: '正房',
     cost: 0,
     capacity: 0,
-    blurb: '大家待着玩的地方',
+    blurb: '你的房间',
   },
   {
     type: 'bedroom',
@@ -77,16 +77,50 @@ export const ROOM_DEFS: RoomDef[] = [
     name: '书房',
     cost: 150,
     capacity: 0,
-    blurb: '中/大任务多赚 10%',
+    blurb: '手册；升级后增加项目奖励',
   },
   {
     type: 'storage',
-    name: '储藏间',
+    name: '库房',
     cost: 60,
     capacity: 0,
-    blurb: '日用每人少花 1，礼物容量 +8',
+    blurb: '物品；升级后扩容并减少日用',
   },
 ]
+
+export const ROOM_LEVEL_LABELS: Record<RoomLevel, string> = {
+  1: '简屋',
+  2: '瓦房',
+  3: '雅室',
+  4: '院居',
+}
+
+export const ROOM_UPGRADE_COSTS: Record<RoomType, Partial<Record<1 | 2 | 3, number>>> = {
+  living: { 1: 50, 2: 120 },
+  bedroom: { 1: 60, 2: 120, 3: 300 },
+  guest: { 1: 70, 2: 140 },
+  kitchen: { 1: 90, 2: 180 },
+  study: { 1: 110, 2: 220 },
+  storage: { 1: 50, 2: 100 },
+}
+
+export const COURTYARD_LEVELS: Record<CourtyardLevel, {
+  name: string
+  capacity: number
+  upgradeCost: number | null
+}> = {
+  1: { name: '小院', capacity: 2, upgradeCost: 100 },
+  2: { name: '三合院', capacity: 4, upgradeCost: 220 },
+  3: { name: '四合院', capacity: 8, upgradeCost: 480 },
+  4: { name: '二进院', capacity: 13, upgradeCost: null },
+}
+
+export const ROOM_TYPE_LIMITS: Partial<Record<RoomType, number>> = {
+  guest: 1,
+  kitchen: 1,
+  study: 1,
+  storage: 1,
+}
 
 export interface DecorationDef {
   id: string
@@ -127,7 +161,6 @@ export const GIFT_DEFS: GiftDef[] = [
     name: '热姜汤',
     cost: 15,
     likedBy: ['shendu'],
-    dislikedBy: ['taotao'],
     blurb: '辛香暖胃，适合凉天',
   },
   {
@@ -148,7 +181,7 @@ export const GIFT_DEFS: GiftDef[] = [
     id: 'wood_scrap',
     name: '小木块',
     cost: 25,
-    likedBy: ['linchu'],
+    likedBy: ['linchu', 'taotao'],
     blurb: '纹理漂亮的一小截木料',
   },
   {
@@ -191,7 +224,7 @@ export const GIFT_DEFS: GiftDef[] = [
     id: 'maltose',
     name: '麦芽糖',
     cost: 15,
-    likedBy: ['taotao'],
+    likedBy: [],
     dislikedBy: ['guwan'],
     blurb: '甜而不腻，能拉出细丝',
   },
@@ -207,7 +240,7 @@ export const GIFT_DEFS: GiftDef[] = [
     id: 'lotus_paper',
     name: '莲纸',
     cost: 18,
-    likedBy: ['hedeng'],
+    likedBy: ['hedeng', 'taotao'],
     blurb: '薄而有韧性的手工纸',
   },
 ]

@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   canInvite,
   stageLabels,
@@ -9,116 +9,102 @@ import {
   FRIENDSHIP_LABELS,
   FRIENDSHIP_THRESHOLDS,
   GIFT_DEFS,
+  INTERACTIONS_PER_NPC_PER_DAY,
   ROMANCE_LABELS,
   ROMANCE_THRESHOLDS,
 } from '../core/constants'
 import { NPC_DEFS, type NpcDef } from '../core/npcs'
 import { roomName } from '../core/economy'
 import {
-  MILESTONES,
-  VALLEY_STAGES,
-  valleyGrowthPoints,
   valleyStage,
-  weeklyProgress,
-  weeklyProgressAtOffset,
 } from '../core/growth'
 import {
   interactionBlockReason,
   inviteRequirements,
   romanceBlockReason,
 } from '../core/progression'
-import type { RoomType } from '../core/types'
-import { EmptyState } from './EmptyState'
 import { eventsForNpc } from '../core/events'
 import {
   portraitForNpc,
   spriteForNpc,
   type CharacterSpriteState,
 } from '../core/visualAssets'
-import { GameIcon, type GameIconName } from '../assets/icons/GameIcon'
+import { GameIcon } from '../assets/icons/GameIcon'
+import { RelationshipSymbol } from './RelationshipMotif'
+import { scenePopulationLimit, scheduledActivity } from '../core/sceneSchedule'
+import { courtyardLayout } from '../core/courtyard'
+import { ROOM_EXTERIOR_ASSETS, roomExteriorAsset } from '../core/roomAssets'
+import { isBuiltInRoom, isCourtyardBedroom, roomResidentCount } from '../core/roomRules'
+import type { CourtyardLevel, RoomInstance } from '../core/types'
+import { courtyardAccents, decorationSpot } from '../core/decorationLayout'
 import {
-  RelationshipMotif,
-  RelationshipSymbol,
-} from './RelationshipMotif'
-
-/** Yard / path spots — away from the house. Percent of scene. */
-const YARD_SPOTS: Array<{ left: string; top: string }> = [
-  { left: '14%', top: '68%' },
-  { left: '30%', top: '78%' },
-  { left: '48%', top: '72%' },
-  { left: '68%', top: '78%' },
-  { left: '86%', top: '68%' },
-  { left: '22%', top: '58%' },
-  { left: '78%', top: '58%' },
-  { left: '10%', top: '48%' },
-  { left: '90%', top: '50%' },
-  { left: '38%', top: '65%' },
-  { left: '62%', top: '64%' },
-  { left: '54%', top: '80%' },
-]
+  courtyardLandscapeDef,
+  courtyardLandscapePlacement,
+} from '../core/courtyardLandscapes'
 
 const PLACEHOLDER_SPRITE =
   'art/characters/placeholders/traveler-placeholder-v1.webp'
 
-const CORE_PROP_ICONS: Partial<Record<string, GameIconName>> = {
-  shendu: 'bamboo',
-  guwan: 'umbrella',
-  taotao: 'ladle',
-}
-
-const ROOM_MODULES: Partial<Record<RoomType, string>> = {
-  bedroom: 'art/house/modules/bedroom-module-v1.webp',
-  guest: 'art/house/modules/guest-module-v1.webp',
-  kitchen: 'art/house/modules/kitchen-module-v1.webp',
-  study: 'art/house/modules/study-module-v1.webp',
-  storage: 'art/house/modules/storage-module-v1.webp',
-}
-
-const EXPANSION_SLOTS = [
-  { x: '33%', bottom: '41%', width: '23%', layer: 2 },
-  { x: '67%', bottom: '41%', width: '23%', layer: 2 },
-  { x: '42%', bottom: '58%', width: '17%', layer: 1 },
-  { x: '58%', bottom: '58%', width: '17%', layer: 1 },
-  { x: '24%', bottom: '45%', width: '17%', layer: 1 },
-  { x: '76%', bottom: '45%', width: '17%', layer: 1 },
-] as const
-
-const DECORATION_SPOTS = [
-  { left: '35%', top: '51%', width: '7%' },
-  { left: '29%', top: '47%', width: '6%' },
-  { left: '62%', top: '53%', width: '7%' },
-  { left: '73%', top: '57%', width: '7%' },
-  { left: '13%', top: '74%', width: '9%' },
-  { left: '84%', top: '57%', width: '8%' },
-  { left: '25%', top: '65%', width: '7%' },
-  { left: '88%', top: '69%', width: '7%' },
-  { left: '8%', top: '53%', width: '8%' },
-  { left: '55%', top: '62%', width: '9%' },
-  { left: '69%', top: '48%', width: '6%' },
-  { left: '78%', top: '80%', width: '10%' },
-] as const
-
-const VALLEY_STAGE_ASSETS = [
-  'art/environment/valley-stage-0-v1.webp',
-  'art/environment/valley-stage-1-v1.webp',
-  'art/environment/valley-stage-2-v1.webp',
-  'art/environment/valley-stage-3-v1.webp',
-] as const
-
-const VALLEY_STAGE_SMALL_ASSETS = VALLEY_STAGE_ASSETS.map((asset) =>
-  asset.replace('.webp', '-768.webp'),
-)
+const COURTYARD_BACKGROUNDS = {
+  1: 'art/environment/courtyard-small-v1.webp',
+  2: 'art/environment/courtyard-three-sided-v1.webp',
+  3: 'art/environment/courtyard-four-sided-v1.webp',
+  4: 'art/environment/courtyard-two-entry-v1.webp',
+} as const
 
 function publicAsset(path: string) {
   return `${import.meta.env.BASE_URL}${path}`
 }
 
-function spotFor(id: string, index: number) {
-  const n = [...id].reduce((a, c) => a + c.charCodeAt(0), 0)
-  return YARD_SPOTS[(n + index * 3) % YARD_SPOTS.length]
+const FACILITY_POSITIONS: Record<CourtyardLevel, Record<'study' | 'storage', { left: number; bottom: number; width: number }>> = {
+  1: { study: { left: 38, bottom: 51, width: 13 }, storage: { left: 62, bottom: 51, width: 13 } },
+  2: { study: { left: 37, bottom: 53, width: 12 }, storage: { left: 63, bottom: 53, width: 12 } },
+  3: { study: { left: 37, bottom: 57, width: 11 }, storage: { left: 63, bottom: 57, width: 11 } },
+  4: { study: { left: 39, bottom: 45, width: 10 }, storage: { left: 61, bottom: 45, width: 10 } },
 }
 
-export function ValleyPanel() {
+function FacilityBuilding({
+  room,
+  kind,
+  courtyardLevel,
+  label,
+  actionLabel,
+  onOpen,
+  onDetails,
+}: {
+  room: RoomInstance
+  kind: 'study' | 'storage'
+  courtyardLevel: CourtyardLevel
+  label: string
+  actionLabel?: string
+  onOpen: () => void
+  onDetails: () => void
+}) {
+  const position = FACILITY_POSITIONS[courtyardLevel][kind]
+  const level = room.level ?? 1
+  return (
+    <div
+      className={`facility-building facility-${kind} level-${level}`}
+      style={{ left: `${position.left}%`, bottom: `${position.bottom}%`, width: `${position.width}%` }}
+    >
+      <button className="facility-main-action" onClick={onOpen} aria-label={actionLabel ?? `进入${label}`}>
+        <img src={publicAsset(roomExteriorAsset(kind, level))} alt="" draggable={false} />
+        <span>{label}</span>
+      </button>
+      <button className="room-level-mark facility-level-action" onClick={onDetails} aria-label={`查看${label}等级`}>{level}</button>
+    </div>
+  )
+}
+
+export function ValleyPanel({
+  onOpenHandbook,
+  onOpenStorehouse,
+  onOpenDesk,
+}: {
+  onOpenHandbook: () => void
+  onOpenStorehouse: () => void
+  onOpenDesk: () => void
+}) {
   const rooms = useGameStore((s) => s.rooms)
   const npc = useGameStore((s) => s.npc)
   const selectNpc = useGameStore((s) => s.selectNpc)
@@ -146,37 +132,57 @@ export function ValleyPanel() {
 
   const visible = NPC_DEFS.filter((n) => npc[n.id]?.met)
   const atHome = visible.filter((n) => npc[n.id].livingAtHome)
-  const outside = visible.filter((n) => !npc[n.id].livingAtHome)
+  const scheduled = visible
+    .map((n) => ({
+      npc: n,
+      activity: scheduledActivity(
+        n.id,
+        npc[n.id].livingAtHome,
+        undefined,
+        state.courtyardLandscape,
+      ),
+    }))
+    .sort((a, b) => a.activity.order - b.activity.order)
+  const naturallyPresent = scheduled.filter((item) => item.activity.appears)
   const movingInNpcId = dialogue?.kind === 'invite' ? dialogue.npcId : null
-  const expansions = rooms.filter((room) => room.type !== 'living').slice(0, 6)
+  const populationLimit = scenePopulationLimit()
+  const movingIn = movingInNpcId
+    ? scheduled.find((item) => item.npc.id === movingInNpcId)
+    : undefined
+  const scenePeople = [
+    ...(movingIn ? [movingIn] : []),
+    ...naturallyPresent.filter((item) => item.npc.id !== movingInNpcId),
+  ].slice(0, movingIn ? Math.max(1, populationLimit) : populationLimit)
+  const expansions = rooms.filter((room) => !isBuiltInRoom(room))
+  const compoundBedroom = expansions.find(isCourtyardBedroom)
+  const standardRooms = expansions.filter((room) => !isCourtyardBedroom(room))
+  const livingRoom = rooms.find((room) => room.type === 'living')
+  const studyRoom = rooms.find((room) => room.type === 'study')
+  const storageRoom = rooms.find((room) => room.type === 'storage')
+  const courtyard = courtyardLayout(state.courtyardLevel, Boolean(compoundBedroom))
+  const courtyardBackground = COURTYARD_BACKGROUNDS[state.courtyardLevel]
   const growthStage = valleyStage(state)
-  const growthPoints = valleyGrowthPoints(state)
-  const growthInfo = VALLEY_STAGES[growthStage]
-  const nextThreshold =
-    growthStage < 3 ? VALLEY_STAGES[growthStage + 1].threshold : growthPoints
-  const previousThreshold = growthInfo.threshold
-  const growthPercent =
-    growthStage === 3
-      ? 100
-      : Math.min(
-          100,
-          ((growthPoints - previousThreshold) /
-            (nextThreshold - previousThreshold)) *
-            100,
-        )
-  const week = weeklyProgress(state.tasks)
-  const lastWeek = weeklyProgressAtOffset(state.tasks, 1)
+  const landscape = courtyardLandscapeDef(state.courtyardLandscape)
+  const landscapePlacement = courtyardLandscapePlacement(
+    state.courtyardLandscape,
+    state.courtyardLevel,
+  )
+  const accents = courtyardAccents(
+    state.courtyardLevel,
+    state.placedDecorations,
+    state.courtyardLandscape,
+  )
 
   return (
     <div className="panel">
       <div
-        className={`valley-scene valley-stage-${growthStage}${atHome.length ? ' has-company' : ''}${
+        className={`valley-scene valley-stage-${growthStage} courtyard-${courtyard.tier} landscape-${state.courtyardLandscape} has-compound${atHome.length ? ' has-company' : ''}${
           valleyRewardReady ? ' is-awake' : ''
         }`}
         aria-label="山谷"
         style={{
-          '--valley-bg': `url("${publicAsset(VALLEY_STAGE_ASSETS[growthStage])}")`,
-          '--valley-bg-small': `url("${publicAsset(VALLEY_STAGE_SMALL_ASSETS[growthStage])}")`,
+          '--valley-bg': `url("${publicAsset(courtyardBackground)}")`,
+          '--valley-bg-small': `url("${publicAsset(courtyardBackground.replace('.webp', '-768.webp'))}")`,
         } as CSSProperties}
       >
         {valleyRewardReady && (
@@ -190,41 +196,142 @@ export function ValleyPanel() {
             <span className="move-in-window-silhouette" />
           </div>
         )}
+        <div className="courtyard-ground-layer" aria-hidden="true">
+          {landscape.asset && landscapePlacement && (
+            <div
+              className={`courtyard-landscape courtyard-landscape-${landscape.id}`}
+              style={{
+                left: `${landscapePlacement.x}%`,
+                top: `${landscapePlacement.y}%`,
+                width: `${landscapePlacement.width}%`,
+              }}
+            >
+              <img
+                src={publicAsset(`art/landscapes/${landscape.asset}`)}
+                alt=""
+                draggable={false}
+              />
+            </div>
+          )}
+          <div className="courtyard-accents">
+            {accents.map((accent) => (
+              <img
+                key={accent.id}
+                className="courtyard-accent"
+                src={publicAsset(`art/landscapes/${accent.asset}`)}
+                alt=""
+                draggable={false}
+                style={{
+                  left: `${accent.x}%`,
+                  top: `${accent.y}%`,
+                  width: `${accent.width}%`,
+                  zIndex: accent.layer,
+                }}
+              />
+            ))}
+          </div>
+        </div>
         <div className="house-expansions" aria-label="已扩建房间">
-          {expansions.map((room, index) => {
-            const image = ROOM_MODULES[room.type]
-            const slot = EXPANSION_SLOTS[index]
+          {compoundBedroom && courtyard.compoundSlot && (
+            <button
+              className={`room-module compound-bedroom level-4${
+                compoundBedroom.id === lastBuiltRoomId ? ' is-new' : ''
+              }`}
+              style={{
+                left: `${courtyard.compoundSlot.x}%`,
+                bottom: `${courtyard.compoundSlot.bottom}%`,
+                width: `${courtyard.compoundSlot.width}%`,
+                zIndex: courtyard.compoundSlot.layer,
+                ['--room-transform' as string]: 'scale(1)',
+              } as CSSProperties}
+              onClick={() => selectRoom(compoundBedroom.id)}
+              aria-label={`院居，${roomResidentCount(compoundBedroom)}/3 人，点击查看`}
+            >
+              <img src={publicAsset(ROOM_EXTERIOR_ASSETS.bedroom[4])} alt="" draggable={false} />
+              <i className="room-level-mark" aria-hidden="true">4</i>
+              <span>院居 · {roomResidentCount(compoundBedroom)}/3</span>
+            </button>
+          )}
+          {livingRoom && (
+            <div className={`facility-building facility-living level-${livingRoom.level ?? 1}`}>
+            <button className="facility-main-action" onClick={onOpenDesk} aria-label="进入正房案头">
+              <img
+                src={publicAsset(roomExteriorAsset('living', livingRoom.level ?? 1))}
+                alt=""
+                draggable={false}
+              />
+              <span>正房</span>
+            </button>
+            <button className="room-level-mark facility-level-action" onClick={() => selectRoom(livingRoom.id)} aria-label="查看正房等级">{livingRoom.level ?? 1}</button>
+            </div>
+          )}
+          {studyRoom && (
+            <FacilityBuilding room={studyRoom} kind="study" courtyardLevel={state.courtyardLevel} label="书房" actionLabel="打开书房手册" onOpen={onOpenHandbook} onDetails={() => selectRoom(studyRoom.id)} />
+          )}
+          {storageRoom && (
+            <FacilityBuilding room={storageRoom} kind="storage" courtyardLevel={state.courtyardLevel} label="库房" onOpen={onOpenStorehouse} onDetails={() => selectRoom(storageRoom.id)} />
+          )}
+          {standardRooms.slice(0, courtyard.slots.length).map((room, index) => {
+            const level = room.level ?? 1
+            const image = roomExteriorAsset(room.type, level)
+            const slot = courtyard.slots[index]
+            const occupantName = room.occupantId
+              ? NPC_DEFS.find((npc) => npc.id === room.occupantId)?.name
+              : null
+            const displayName = occupantName
+              ? `${occupantName}的房间`
+              : room.type === 'bedroom'
+                ? '空房间'
+                : roomName(room.type)
             if (!image || !slot) return null
             return (
               <button
                 key={room.id}
-                className={`room-module${
+                className={`room-module role-${slot.role} level-${level}${
                   room.id === lastBuiltRoomId ? ' is-new' : ''
                 }`}
                 style={{
-                  left: slot.x,
-                  bottom: slot.bottom,
-                  width: slot.width,
+                  left: `${slot.x}%`,
+                  bottom: `${slot.bottom}%`,
+                  width: `${slot.width}%`,
                   zIndex: slot.layer,
-                }}
+                  ['--room-transform' as string]: slot.transform ?? 'scale(1)',
+                } as CSSProperties}
                 onClick={() => selectRoom(room.id)}
-                aria-label={`${roomName(room.type)}，点击查看`}
+                aria-label={`${displayName}，点击查看`}
               >
                 <img src={publicAsset(image)} alt="" draggable={false} />
-                <span>{roomName(room.type)}</span>
+                <i className="room-level-mark" aria-hidden="true">{level}</i>
+                <span>{displayName}</span>
               </button>
             )
           })}
+          {standardRooms.length > courtyard.slots.length && (
+            <button className="courtyard-overflow" onClick={() => selectRoom(standardRooms[courtyard.slots.length]?.id ?? null)}>
+              另院 +{standardRooms.length - courtyard.slots.length}
+            </button>
+          )}
         </div>
         <div className="valley-decorations" aria-label="山谷装饰">
-          {DECORATION_DEFS.map((decoration, index) => {
+          {DECORATION_DEFS.map((decoration) => {
             if (!state.placedDecorations.includes(decoration.id)) return null
-            const spot = DECORATION_SPOTS[index]
+            const spot = decorationSpot(
+              state.courtyardLevel,
+              decoration.id,
+              state.courtyardLandscape,
+            )
+            if (!spot) return null
             return (
               <button
                 key={decoration.id}
                 className="valley-decoration"
-                style={spot}
+                style={{
+                  left: `${spot.x}%`,
+                  top: `${spot.y}%`,
+                  width: `${spot.width}%`,
+                  zIndex: spot.layer,
+                  ['--decor-rotation' as string]: `${spot.rotation ?? 0}deg`,
+                } as CSSProperties}
                 onClick={() => toggleDecoration(decoration.id)}
                 aria-label={`${decoration.name}，点击收起`}
                 title={`${decoration.name} · 点击收起`}
@@ -238,147 +345,27 @@ export function ValleyPanel() {
             )
           })}
         </div>
-        {atHome.length > 0 && (
-          <div className="porch-row" aria-label="同住">
-            {atHome.map((n) => (
-              <NpcButton
-                key={n.id}
-                n={n}
-                onSelect={selectNpc}
-                compact
-                spriteState={n.id === movingInNpcId ? 'moveIn' : 'idle'}
-              />
-            ))}
-          </div>
-        )}
-
-        {outside.map((n, i) => {
-          const spot = spotFor(n.id, i)
+        {scenePeople.map(({ npc: n, activity }) => {
           return (
             <button
               key={n.id}
-              className={`npc-spot${onboardingStep === 3 ? ' guide-target' : ''}`}
-              style={{ left: spot.left, top: spot.top }}
+              className={`npc-spot activity-${n.id}${activity.zone === 'courtyard' ? ' is-courtyard-person' : ''}${onboardingStep === 3 ? ' guide-target' : ''}`}
+              style={{ left: activity.left, top: activity.top }}
               onClick={() => selectNpc(n.id)}
-              aria-label={n.name}
+              aria-label={`${n.name} · ${activity.label}`}
+              title={`${n.name} · ${activity.label}`}
             >
-              <CharacterVisual n={n} spriteState="walkAway" animateWalking />
+              <CharacterVisual
+                n={n}
+                spriteState={n.id === movingInNpcId ? 'moveIn' : 'walkAway'}
+                animateWalking
+              />
               <small>{n.name}</small>
             </button>
           )
         })}
       </div>
 
-      <section className="growth-card" aria-labelledby="growth-title">
-        <div className="growth-heading">
-          <div>
-            <span>山谷成长 · 第 {growthStage + 1} 阶段</span>
-            <h2 id="growth-title">{growthInfo.name}</h2>
-          </div>
-          <strong>{Math.min(growthPoints, nextThreshold)}/{nextThreshold}</strong>
-        </div>
-        <p>{growthInfo.description}</p>
-        <div
-          className="growth-track"
-          role="progressbar"
-          aria-label="距离山谷下一阶段"
-          aria-valuemin={previousThreshold}
-          aria-valuemax={nextThreshold}
-          aria-valuenow={Math.min(growthPoints, nextThreshold)}
-        >
-          <i style={{ width: `${growthPercent}%` }} />
-        </div>
-        <div className="weekly-gentle">
-          <span>本周目标</span>
-          <div>
-            <strong>待办 {week.completed}/{week.taskGoal}</strong>
-            <i><b style={{ width: `${Math.min(100, week.completed / week.taskGoal * 100)}%` }} /></i>
-          </div>
-          <div>
-            <strong>活跃 {week.activeDays}/{week.dayGoal}</strong>
-            <i><b style={{ width: `${Math.min(100, week.activeDays / week.dayGoal * 100)}%` }} /></i>
-          </div>
-        </div>
-        <details className="weekly-summary">
-          <summary>上周</summary>
-          <div className="weekly-summary-meters">
-            <span>待办 <b>{lastWeek.completed}</b></span>
-            <span>活跃 <b>{lastWeek.activeDays} 天</b></span>
-          </div>
-        </details>
-        {state.milestones.length > 0 && (
-          <div className="milestone-row" aria-label="已获得里程碑">
-            {MILESTONES.filter((item) =>
-              state.milestones.includes(item.id),
-            ).map((item) => (
-              <span key={item.id} title={item.detail}>
-                <img
-                  src={publicAsset(`art/milestones/${item.asset}`)}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  draggable={false}
-                />
-                <b>{item.name}</b>
-                <small>{item.detail}</small>
-              </span>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {visible.length === 0 && (
-        <EmptyState
-          compact
-          image="art/empty-states/characters-empty-v1.webp"
-          title="还没有解锁角色"
-          detail="完成待办并扩建房间，可以解锁更多角色。"
-        />
-      )}
-
-      {visible.length > 0 && (
-        <>
-          <h2 className="section-title valley-people-title">遇见的人</h2>
-          <div className="visitor-strip" aria-label="已遇见角色">
-            {visible.map((npcDef) => (
-              <NpcButton
-                key={npcDef.id}
-                n={npcDef}
-                onSelect={selectNpc}
-                compact
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      <h2 className="section-title">房间</h2>
-      <div className="rooms-strip">
-        {rooms.map((r) => {
-          const label = (
-            <>
-              {roomName(r.type)}
-              {r.occupantId
-                ? ` · ${NPC_DEFS.find((n) => n.id === r.occupantId)?.name}`
-                : ROOM_CAPACITY_HINT(r.type)}
-            </>
-          )
-          return r.type === 'living' ? (
-            <div key={r.id} className="room-pill">
-              {label}
-            </div>
-          ) : (
-            <button
-              key={r.id}
-              className="room-pill is-interactive"
-              onClick={() => selectRoom(r.id)}
-              aria-label={`查看${roomName(r.type)}室内`}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
     </div>
   )
 }
@@ -427,35 +414,6 @@ function CharacterVisual({
   )
 }
 
-function NpcButton({
-  n,
-  onSelect,
-  compact,
-  spriteState = 'idle',
-}: {
-  n: NpcDef
-  onSelect: (id: string) => void
-  compact?: boolean
-  spriteState?: CharacterSpriteState
-}) {
-  return (
-    <button
-      className="npc-chip"
-      onClick={() => onSelect(n.id)}
-      aria-label={n.name}
-      style={compact ? { width: 48 } : undefined}
-    >
-      <CharacterVisual n={n} compact={compact} spriteState={spriteState} />
-      <small>{n.name}</small>
-    </button>
-  )
-}
-
-function ROOM_CAPACITY_HINT(type: string) {
-  if (type === 'bedroom' || type === 'guest') return ' · 空'
-  return ''
-}
-
 export function NpcSheet() {
   const id = useGameStore((s) => s.selectedNpcId)
   const npcState = useGameStore((s) => (id ? s.npc[id] : null))
@@ -472,6 +430,15 @@ export function NpcSheet() {
   const separatePartner = useGameStore((s) => s.separatePartner)
   const selectEvent = useGameStore((s) => s.selectEvent)
   const state = useGameStore()
+  const [showInvite, setShowInvite] = useState(false)
+  const [showGifts, setShowGifts] = useState(false)
+  const [profilePage, setProfilePage] = useState<0 | 1>(0)
+
+  useEffect(() => {
+    setShowInvite(false)
+    setShowGifts(false)
+    setProfilePage(0)
+  }, [id])
 
   if (!id || !npcState) return null
   const def = NPC_DEFS.find((n) => n.id === id)
@@ -482,6 +449,12 @@ export function NpcSheet() {
   const heartReason = interactionBlockReason(state, id, 2, true)
   const romanceReason = romanceBlockReason(state, id)
   const inviteChecks = inviteRequirements(state, id)
+  const giftBlockReason =
+    inventory.length === 0
+      ? '没有礼物'
+      : npcState.interactionsToday >= INTERACTIONS_PER_NPC_PER_DAY
+        ? `今日互动 ${INTERACTIONS_PER_NPC_PER_DAY}/${INTERACTIONS_PER_NPC_PER_DAY}`
+        : null
   const friendshipTarget =
     Object.values(FRIENDSHIP_THRESHOLDS).find(
       (threshold) => threshold > npcState.friendshipPoints,
@@ -507,7 +480,7 @@ export function NpcSheet() {
       >
         <span className="paper-stitch paper-stitch-top" aria-hidden="true" />
         <span className="paper-stitch paper-stitch-bottom" aria-hidden="true" />
-        <div
+        {profilePage === 0 && <div
           className={`npc-sheet-intro${portrait ? ' has-portrait' : ''}${
             activeDialogue ? ` tone-${activeDialogue.tone}` : ''
           }`}
@@ -526,19 +499,14 @@ export function NpcSheet() {
           <div className="npc-sheet-copy">
             <h2>{def.name}</h2>
             <p className="muted">{def.blurb}</p>
-            <p className="muted">
-              {CORE_PROP_ICONS[id] && (
-                <GameIcon
-                  name={CORE_PROP_ICONS[id]}
-                  className="npc-prop-icon"
-                />
-              )}
-              {def.prop} · {def.voice}
-              {npcState.livingAtHome ? ' · 住在你家' : ' · 在外面'}
-            </p>
+            {npcState.livingAtHome && (
+              <span className="npc-home-mark" title="已入住" aria-label="已入住">
+                <GameIcon name="home" />
+              </span>
+            )}
             <div className="relationship-bars" aria-label="关系进度">
               <div>
-                <span>友情 · {FRIENDSHIP_LABELS[f]}</span>
+                <span title={`友情：${FRIENDSHIP_LABELS[f]}`} aria-label={`友情：${FRIENDSHIP_LABELS[f]}`}><GameIcon name="chat" />友情</span>
                 <strong>{Math.min(npcState.friendshipPoints, friendshipTarget)}/{friendshipTarget}</strong>
                 <i role="progressbar" aria-label="友情进度" aria-valuemin={0} aria-valuemax={friendshipTarget} aria-valuenow={Math.min(npcState.friendshipPoints, friendshipTarget)}>
                   <b style={{ width: `${Math.min(100, npcState.friendshipPoints / friendshipTarget * 100)}%` }} />
@@ -546,26 +514,69 @@ export function NpcSheet() {
               </div>
               {npcState.romanceUnlocked && (
                 <div className="is-romance">
-                  <span>喜欢 · {ROMANCE_LABELS[r]}</span>
+                  <span title={`喜欢：${ROMANCE_LABELS[r]}`} aria-label={`喜欢：${ROMANCE_LABELS[r]}`}><GameIcon name="heart" />喜欢</span>
                   <strong>{Math.min(npcState.romancePoints, romanceTarget)}/{romanceTarget}</strong>
                   <i role="progressbar" aria-label="喜欢进度" aria-valuemin={0} aria-valuemax={romanceTarget} aria-valuenow={Math.min(npcState.romancePoints, romanceTarget)}>
                     <b style={{ width: `${Math.min(100, npcState.romancePoints / romanceTarget * 100)}%` }} />
                   </i>
                 </div>
               )}
-              <em>今日互动 {npcState.interactionsToday}/3</em>
+              <em title="今日互动" aria-label={`今日互动 ${npcState.interactionsToday}/3`}><GameIcon name="spark" />今日 {npcState.interactionsToday}/3</em>
             </div>
           </div>
-        </div>
+        </div>}
 
-        <RelationshipMotif
-          friendship={f}
-          romance={r}
-          friendshipLabel={FRIENDSHIP_LABELS[f]}
-          romanceLabel={ROMANCE_LABELS[r]}
-        />
-
-        {activeDialogue ? (
+        {profilePage === 1 ? (
+          <div className="journal-story-page">
+            <section className="preference-journal journal-page-preferences" aria-labelledby="preference-title">
+              <div className="preference-heading">
+                <h3 id="preference-title"><GameIcon name="basket" />喜好</h3>
+                <span>{giftKnowledge.length}/12</span>
+              </div>
+              {giftKnowledge.length > 0 && (
+                <div className="preference-tags">
+                  {giftKnowledge.map((gift) => (
+                    <span
+                      key={gift.id}
+                      className={`is-${gift.reaction}`}
+                      title={gift.reaction === 'liked' ? '喜欢' : gift.reaction === 'disliked' ? '不喜欢' : '普通'}
+                    >
+                      <i aria-hidden="true">{gift.reaction === 'liked' ? '♥' : gift.reaction === 'disliked' ? '×' : '·'}</i>
+                      {gift.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+            <section className="memory-album" aria-labelledby="memory-title">
+            <div className="memory-heading journal-page-heading">
+              <h3 id="memory-title"><GameIcon name="book" />故事</h3>
+              <span>
+                {relationshipEvents.filter((event) => unlockedEvents.has(event.id)).length}/{relationshipEvents.length}
+              </span>
+            </div>
+            <p className="journal-person-name">{def.name}</p>
+            <div className="memory-grid">
+              {relationshipEvents.map((event) => {
+                const unlocked = unlockedEvents.has(event.id)
+                return (
+                  <button
+                    key={event.id}
+                    className={unlocked ? 'is-unlocked' : ''}
+                    disabled={!unlocked}
+                    onClick={() => selectEvent(event.id)}
+                  >
+                    <span className="memory-track">
+                      <RelationshipSymbol kind={event.track} stage={event.track === 'friendship' ? f : r} compact />
+                    </span>
+                    <strong>{unlocked ? event.title : '？'}</strong>
+                  </button>
+                )
+              })}
+            </div>
+            </section>
+          </div>
+        ) : activeDialogue ? (
           <div className={`dialogue-box tone-${activeDialogue.tone}`} role="status">
             <span className="dialogue-name">{def.name}</span>
             <p>“{activeDialogue.text}”</p>
@@ -581,70 +592,105 @@ export function NpcSheet() {
                   <button
                     className="btn"
                     disabled={Boolean(chatReason)}
-                    title={chatReason ?? undefined}
+                    title={chatReason ?? '聊聊'}
                     onClick={() => chat(id)}
                   >
-                    聊聊
+                    <GameIcon name="chat" /><span>聊聊</span>
                   </button>
                   <button
                     className="btn secondary"
                     disabled={Boolean(heartReason)}
-                    title={heartReason ?? undefined}
+                    title={heartReason ?? '深聊'}
                     onClick={() => heartTalk(id)}
                   >
-                    深聊
+                    <GameIcon name="spark" /><span>深聊</span>
                   </button>
                   {!npcState.romanceUnlocked && (
                     <button
                       className="btn secondary"
                       disabled={Boolean(romanceReason)}
-                      title={romanceReason ?? undefined}
+                      title={romanceReason ?? '表白'}
                       onClick={() => unlockRomance(id)}
                     >
-                      表白
+                      <GameIcon name="heart" /><span>表白</span>
                     </button>
                   )}
                   <button
-                    className="btn"
-                    disabled={!inviteOk}
-                    title={
-                      inviteOk
-                        ? undefined
-                        : inviteChecks
-                            .filter((item) => !item.met)
-                            .map((item) => item.detail)
-                            .join('；')
-                    }
-                    onClick={() => invitePartner(id)}
+                    className="btn secondary"
+                    disabled={Boolean(giftBlockReason)}
+                    title={giftBlockReason ?? '送礼'}
+                    aria-expanded={showGifts || undefined}
+                    aria-controls="gift-quick-picker"
+                    onClick={() => setShowGifts((value) => !value)}
                   >
-                    请进来住
+                    <GameIcon name="basket" /><span>送礼</span>
+                  </button>
+                  <button
+                    className={`btn${inviteOk ? '' : ' is-unavailable'}`}
+                    aria-expanded={showInvite || undefined}
+                    aria-controls="invite-requirements"
+                    title={
+                      inviteOk ? '邀请同住' : '查看同住条件'
+                    }
+                    onClick={() => inviteOk ? invitePartner(id) : setShowInvite((value) => !value)}
+                  >
+                    <GameIcon name="home" /><span>邀请同住</span>
                   </button>
                 </>
               )}
               {npcState.livingAtHome && (
                 <>
-                  <button className="btn" onClick={() => teaWith(id)}>
-                    喝茶
+                  <button className="btn" title="喝茶" onClick={() => teaWith(id)}>
+                    <GameIcon name="ladle" /><span>喝茶</span>
                   </button>
-                  <button className="btn danger" onClick={() => separatePartner(id)}>
-                    搬出去
+                  <button
+                    className="btn secondary"
+                    disabled={Boolean(giftBlockReason)}
+                    title={giftBlockReason ?? '送礼'}
+                    aria-expanded={showGifts || undefined}
+                    aria-controls="gift-quick-picker"
+                    onClick={() => setShowGifts((value) => !value)}
+                  >
+                    <GameIcon name="basket" /><span>送礼</span>
+                  </button>
+                  <button className="btn danger" title="搬出去" onClick={() => separatePartner(id)}>
+                    <GameIcon name="home" /><span>搬出</span>
                   </button>
                 </>
               )}
             </div>
 
-            {!npcState.livingAtHome && (
-              <>
-                <div className="invite-checks" aria-label="邀请入住条件">
-                  {inviteChecks.map((requirement) => (
+            {showGifts && !giftBlockReason && (
+              <div id="gift-quick-picker" className="gift-quick-picker" aria-label="选择礼物">
+                {inventory.map((gift) => {
+                  const known = npcState.giftDiscoveries[gift.id]
+                  return (
+                    <button
+                      key={gift.id}
+                      className="btn secondary"
+                      onClick={() => {
+                        giveGift(id, gift.id)
+                        setShowGifts(false)
+                      }}
+                    >
+                      {giftName(gift.id)} ×{gift.qty}
+                      {known === 'liked' ? ' ♥' : known === 'disliked' ? ' ×' : ''}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {!npcState.livingAtHome && showInvite && (
+                <div id="invite-requirements" className="invite-checks" aria-label="邀请入住条件">
+                  {inviteChecks.map((requirement, index) => (
                     <div
                       key={requirement.label}
                       className={requirement.met ? 'is-met' : ''}
                     >
-                      <span aria-hidden="true">{requirement.met ? '✓' : '○'}</span>
+                      <span aria-hidden="true"><GameIcon name={index === 0 ? 'heart' : index === 1 ? 'home' : 'coin'} />{index === 0 ? '关系' : index === 1 ? '空房' : '金币'}</span>
                       <p>
-                        <strong>{requirement.label}</strong>
-                        <small>{requirement.detail}</small>
+                        <strong>{requirement.value}/{requirement.target}</strong>
                         <i
                           className="requirement-track"
                           role="progressbar"
@@ -659,119 +705,35 @@ export function NpcSheet() {
                     </div>
                   ))}
                 </div>
-              </>
             )}
 
-            <section className="preference-journal" aria-labelledby="preference-title">
-              <div className="preference-heading">
-                <h3 id="preference-title">喜好手记</h3>
-                <span>{giftKnowledge.length}/12 已发现</span>
-              </div>
-              {giftKnowledge.length === 0 ? (
-                <p>送过礼物以后，反应会记在这里。</p>
-              ) : (
-                <div className="preference-tags">
-                  {giftKnowledge.map((gift) => (
-                    <span
-                      key={gift.id}
-                      className={`is-${gift.reaction}`}
-                      title={
-                        gift.reaction === 'liked'
-                          ? '喜欢'
-                          : gift.reaction === 'disliked'
-                            ? '不喜欢'
-                            : '普通'
-                      }
-                    >
-                      <i aria-hidden="true">
-                        {gift.reaction === 'liked'
-                          ? '♥'
-                          : gift.reaction === 'disliked'
-                            ? '×'
-                            : '·'}
-                      </i>
-                      {gift.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {relationshipEvents.length > 0 && (
-              <section className="memory-album" aria-labelledby="memory-title">
-                <div className="memory-heading">
-                  <h3 id="memory-title">回忆册</h3>
-                  <span>
-                    {
-                      relationshipEvents.filter((event) =>
-                        unlockedEvents.has(event.id),
-                      ).length
-                    }
-                    /{relationshipEvents.length} 已解锁
-                  </span>
-                </div>
-                <div className="memory-grid">
-                  {relationshipEvents.map((event) => {
-                    const unlocked = unlockedEvents.has(event.id)
-                    return (
-                      <button
-                        key={event.id}
-                        className={unlocked ? 'is-unlocked' : ''}
-                        disabled={!unlocked}
-                        onClick={() => selectEvent(event.id)}
-                      >
-                        <span className="memory-track">
-                          <RelationshipSymbol
-                            kind={event.track}
-                            stage={event.track === 'friendship' ? f : r}
-                            compact
-                          />
-                          {event.track === 'friendship' ? '两杯茶' : '一盏灯'}
-                        </span>
-                        <strong>{unlocked ? event.title : '尚未发生'}</strong>
-                        <small>
-                          {unlocked
-                            ? event.summary
-                            : event.track === 'friendship'
-                              ? '继续积累友情'
-                              : '继续靠近彼此'}
-                        </small>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            )}
-
-            {inventory.length > 0 && (
-            <>
-              <h3 className="section-title" style={{ marginTop: 18 }}>
-                送礼
-              </h3>
-              <div className="actions">
-                {inventory.map((g) => {
-                  const known = npcState.giftDiscoveries[g.id]
-                  return (
-                    <button
-                      key={g.id}
-                      className="btn secondary"
-                      onClick={() => giveGift(id, g.id)}
-                    >
-                      {giftName(g.id)} ×{g.qty}
-                      {known === 'liked'
-                        ? ' · 喜欢'
-                        : known === 'disliked'
-                          ? ' · 不喜欢'
-                          : known === 'neutral'
-                            ? ' · 普通'
-                            : ''}
-                    </button>
-                  )
-                })}
-              </div>
-            </>
-            )}
           </>
+        )}
+
+        {relationshipEvents.length > 0 && !activeDialogue && (
+          <nav className="journal-page-nav" aria-label="人物手记分页">
+            {profilePage === 1 && (
+              <button
+                className="previous"
+                type="button"
+                onClick={() => setProfilePage(0)}
+                aria-label="上一页：互动"
+              >
+                ← 互动
+              </button>
+            )}
+            <span>{profilePage + 1}/2</span>
+            {profilePage === 0 && (
+              <button
+                className="next"
+                type="button"
+                onClick={() => setProfilePage(1)}
+                aria-label="下一页：详情"
+              >
+                详情 →
+              </button>
+            )}
+          </nav>
         )}
 
         <div className="actions">
