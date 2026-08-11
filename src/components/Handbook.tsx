@@ -165,17 +165,22 @@ function TownsfolkPages({
           return (
             <button
               key={npc.id}
-              className={`townsfolk-entry${interacted ? '' : ' is-mystery'}${
-                met && !interacted ? ' is-shadow-open' : ''
-              }`}
-              disabled={!met}
+              className={`townsfolk-entry${interacted ? '' : ' is-mystery'}`}
+              disabled={!interacted}
               onClick={() => onOpen(npc.id)}
               aria-label={
-                !met
-                  ? '未遇见的镇民'
-                  : interacted
-                    ? `查看${npc.name}`
-                    : '陌生的镇民'
+                interacted
+                  ? `查看${npc.name}`
+                  : met
+                    ? '陌生的镇民，去山谷打个招呼'
+                    : '未遇见的镇民'
+              }
+              title={
+                interacted
+                  ? undefined
+                  : met
+                    ? '去山谷打个招呼'
+                    : undefined
               }
             >
               <span className="townsfolk-portrait">
