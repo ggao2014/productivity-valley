@@ -2,7 +2,7 @@ import type { GameState } from './types'
 
 const KEY = 'productivity-valley-v1'
 const BACKUP_KEY = 'productivity-valley-backup-v1'
-const CURRENT_SCHEMA_VERSION = 15
+const CURRENT_SCHEMA_VERSION = 16
 
 type PersistedState = Omit<
   GameState,
@@ -70,6 +70,7 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
   ) return false
   if (value.habits !== undefined && !Array.isArray(value.habits)) return false
   if (value.projects !== undefined && !Array.isArray(value.projects)) return false
+  if (value.plans !== undefined && !Array.isArray(value.plans)) return false
   if (
     value.courtyardLevel !== undefined &&
     ![1, 2, 3, 4].includes(Number(value.courtyardLevel))
@@ -183,6 +184,25 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
       ) &&
       Array.isArray(project.awardedMilestones),
   )
+  const plansOk = (value.plans ?? []).every((plan) => {
+    if (!isRecord(plan)) return false
+    if (typeof plan.dayKey !== 'string') return false
+    if (!['morning', 'afternoon', 'evening', 'anytime'].includes(String(plan.slot))) {
+      return false
+    }
+    if (!isRecord(plan.target)) return false
+    const kind = String(plan.target.kind)
+    if (kind === 'task' || kind === 'habit') {
+      return typeof plan.target.id === 'string'
+    }
+    if (kind === 'block') {
+      return (
+        typeof plan.target.projectId === 'string' &&
+        typeof plan.target.blockId === 'string'
+      )
+    }
+    return false
+  })
   const snapshotsOk = Object.values(value.habitRewardSnapshots ?? {}).every(
     (ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string'),
   )
@@ -194,6 +214,7 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
     inventoryOk &&
     habitsOk &&
     projectsOk &&
+    plansOk &&
     snapshotsOk
   )
 }
