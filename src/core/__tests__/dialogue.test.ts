@@ -164,6 +164,7 @@ describe('conditional dialogue selection', () => {
 
   it('provides every special interaction type for every defined NPC', () => {
     const specialKinds: readonly DialogueKind[] = [
+      'meet',
       'heart',
       'romance',
       'giftLiked',
@@ -179,6 +180,26 @@ describe('conditional dialogue selection', () => {
         expect(entries.length, `${npcId}/${kind}`).toBeGreaterThan(0)
         expect(entries.every((entry) => entry.text.trim().length > 0)).toBe(true)
       }
+    }
+  })
+
+  it('uses the approved first-meet line for every NPC', () => {
+    const expected: Record<string, string> = {
+      shendu: '……嗯。你是新来的。',
+      qinghe: '嘿！新面孔？过来过来！',
+      guwan: '你？行，记住了。',
+      jiangxiaoman: '哟，新邻居！饿不饿？',
+      chenshi: '新客啊？先瞧瞧货也行。',
+      taotao: '嗨！糖画要不要看一眼？',
+      linchu: '……你好。',
+      baizhi: '你好呀。我是白芷。',
+      suweiming: '有缘见面。',
+      yueqingshan: '报到了？认识一下。',
+      wenjiu: '登记一下。你叫什么？',
+      hedeng: '新朋友！嘻嘻',
+    }
+    for (const { id: npcId } of NPC_DEFS) {
+      expect(dialogueFor(gameState(), npcId, 'meet').text).toBe(expected[npcId])
     }
   })
 

@@ -1282,7 +1282,12 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         bond: s.bond - 2,
         npc,
-        dialogue: dialogueFor(s, npcId, 'romance', p.interactionsToday),
+        dialogue: dialogueFor(
+          { ...s, npc },
+          npcId,
+          p.interacted ? 'romance' : 'meet',
+          p.interactionsToday,
+        ),
         toast: '喜欢线已开启',
       })
     })
@@ -1328,18 +1333,20 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           },
         },
       }
+      const giftKind =
+        reaction === 'liked'
+          ? 'giftLiked'
+          : reaction === 'disliked'
+            ? 'giftDisliked'
+            : 'giftNeutral'
       return persist({
         ...s,
         inventory: inv,
         npc,
         dialogue: dialogueFor(
-          s,
+          { ...s, npc },
           npcId,
-          reaction === 'liked'
-            ? 'giftLiked'
-            : reaction === 'disliked'
-              ? 'giftDisliked'
-              : 'giftNeutral',
+          p.interacted ? giftKind : 'meet',
           p.interactionsToday,
         ),
         toast:
@@ -1527,6 +1534,7 @@ function interact(
     return { ...s, toast: '今天聊够啦，明天再来' }
   }
   const romanceGain = p.romanceUnlocked ? gain.romance : 0
+  const firstMeet = !p.interacted
   const npc = {
     ...s.npc,
     [npcId]: {
@@ -1545,7 +1553,12 @@ function interact(
     bond: s.bond - cost,
     npc,
     onboardingStep: s.onboardingStep === 3 ? 4 : s.onboardingStep,
-    dialogue: dialogueFor({ ...s, npc }, npcId, kind, p.interactionsToday),
+    dialogue: dialogueFor(
+      { ...s, npc },
+      npcId,
+      firstMeet ? 'meet' : kind,
+      p.interactionsToday,
+    ),
     toast: okToast,
   })
 }

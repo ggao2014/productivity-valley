@@ -15,6 +15,7 @@ export type BedroomSection = 'main' | 'leftWing' | 'rightWing'
 export type FriendshipStage = 0 | 1 | 2 | 3
 export type RomanceStage = 0 | 1 | 2 | 3 | 4
 export type DialogueKind =
+  | 'meet'
   | 'chat'
   | 'heart'
   | 'romance'

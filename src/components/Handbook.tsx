@@ -169,8 +169,8 @@ function TownsfolkPages({
               return (
                 <button
                   key={npc.id}
-                  className={`townsfolk-entry${met ? '' : ' is-mystery'}${
-                    met && !interacted ? ' is-unmet-detail' : ''
+                  className={`townsfolk-entry${interacted ? '' : ' is-mystery'}${
+                    met && !interacted ? ' is-shadow-open' : ''
                   }`}
                   disabled={!met}
                   onClick={() => onOpen(npc.id)}
@@ -179,7 +179,7 @@ function TownsfolkPages({
                       ? '未遇见的镇民'
                       : interacted
                         ? `查看${npc.name}`
-                        : `遇见了${npc.name}，还没聊过`
+                        : '陌生的镇民'
                   }
                 >
                   <span className="townsfolk-portrait">
@@ -190,15 +190,18 @@ function TownsfolkPages({
                     />
                   </span>
                   <span className="townsfolk-entry-copy">
-                    <strong>{met ? npc.name : '未遇见'}</strong>
-                    {interacted && (
-                      <small>
-                        <span title={`友情：${FRIENDSHIP_LABELS[friendship]}`}><GameIcon name="chat" />{friendship}</span>
-                        {progress.romanceUnlocked && <span title={`喜欢：${ROMANCE_LABELS[romance]}`}><GameIcon name="heart" />{romance}</span>}
-                        {progress.livingAtHome && <span title="同住"><GameIcon name="home" /></span>}
-                      </small>
+                    {interacted ? (
+                      <>
+                        <strong>{npc.name}</strong>
+                        <small>
+                          <span title={`友情：${FRIENDSHIP_LABELS[friendship]}`}><GameIcon name="chat" />{friendship}</span>
+                          {progress.romanceUnlocked && <span title={`喜欢：${ROMANCE_LABELS[romance]}`}><GameIcon name="heart" />{romance}</span>}
+                          {progress.livingAtHome && <span title="同住"><GameIcon name="home" /></span>}
+                        </small>
+                      </>
+                    ) : (
+                      <strong className="townsfolk-unknown" aria-hidden="true"> </strong>
                     )}
-                    {met && !interacted && <small className="townsfolk-hint">还没聊过</small>}
                   </span>
                 </button>
               )

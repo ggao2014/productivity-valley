@@ -127,6 +127,25 @@ describe('task rewards', () => {
 })
 
 describe('daily interaction cap', () => {
+  it('plays the first-meet line on the first chat, then normal chat lines', () => {
+    useGameStore.setState(
+      gameState({
+        bond: 10,
+        npc: { shendu: npcProgress({ met: true, interacted: false }) },
+      }),
+    )
+    useGameStore.getState().chat('shendu')
+    expect(useGameStore.getState().dialogue).toMatchObject({
+      kind: 'meet',
+      text: '……嗯。你是新来的。',
+    })
+    expect(useGameStore.getState().npc.shendu.interacted).toBe(true)
+
+    useGameStore.getState().clearDialogue()
+    useGameStore.getState().chat('shendu')
+    expect(useGameStore.getState().dialogue?.kind).toBe('chat')
+  })
+
   it('allows three chats and rejects the fourth without charging energy', () => {
     useGameStore.setState(
       gameState({
@@ -153,6 +172,7 @@ describe('gift preference discovery', () => {
         inventory: [{ id: 'ginger_soup', qty: 1 }],
         npc: {
           shendu: npcProgress({
+            interacted: true,
             romanceUnlocked: true,
             romancePoints: 30,
           }),
@@ -173,6 +193,7 @@ describe('gift preference discovery', () => {
         inventory: [{ id: 'trinket', qty: 1 }],
         npc: {
           shendu: npcProgress({
+            interacted: true,
             romanceUnlocked: true,
             romancePoints: 30,
           }),

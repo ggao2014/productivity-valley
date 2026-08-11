@@ -346,21 +346,22 @@ export function ValleyPanel({
           })}
         </div>
         {scenePeople.map(({ npc: n, activity }) => {
+          const known = Boolean(npc[n.id]?.interacted)
           return (
             <button
               key={n.id}
-              className={`npc-spot activity-${n.id}${activity.zone === 'courtyard' ? ' is-courtyard-person' : ''}${onboardingStep === 3 ? ' guide-target' : ''}`}
+              className={`npc-spot activity-${n.id}${activity.zone === 'courtyard' ? ' is-courtyard-person' : ''}${known ? '' : ' is-silhouette'}${onboardingStep === 3 ? ' guide-target' : ''}`}
               style={{ left: activity.left, top: activity.top }}
               onClick={() => selectNpc(n.id)}
-              aria-label={`${n.name} · ${activity.label}`}
-              title={`${n.name} · ${activity.label}`}
+              aria-label={known ? `${n.name} · ${activity.label}` : '陌生的镇民'}
+              title={known ? `${n.name} · ${activity.label}` : '陌生的镇民'}
             >
               <CharacterVisual
                 n={n}
                 spriteState={n.id === movingInNpcId ? 'moveIn' : 'walkAway'}
                 animateWalking
               />
-              <small>{n.name}</small>
+              {known && <small>{n.name}</small>}
             </button>
           )
         })}
@@ -497,9 +498,13 @@ export function NpcSheet() {
             </div>
           )}
           <div className="npc-sheet-copy">
-            <h2>{def.name}</h2>
+            <h2>{npcState.interacted || activeDialogue ? def.name : '？'}</h2>
             <p className="muted">
-              {npcState.interacted ? def.blurb : '还没聊过，先打个招呼吧'}
+              {npcState.interacted
+                ? def.blurb
+                : activeDialogue
+                  ? '刚打过招呼'
+                  : '还没聊过，先打个招呼吧'}
             </p>
             {npcState.livingAtHome && (
               <span className="npc-home-mark" title="已入住" aria-label="已入住">

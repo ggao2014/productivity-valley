@@ -390,13 +390,18 @@ button {
   filter: brightness(0) opacity(.64);
 }
 
-.townsfolk-entry.is-unmet-detail {
-  opacity: .9;
+.townsfolk-entry.is-shadow-open {
+  cursor: pointer;
+  opacity: .88;
 }
 
-.townsfolk-hint {
-  color: #8a7a62;
-  font-size: 0.72rem;
+.townsfolk-entry.is-shadow-open:not(:disabled):hover,
+.townsfolk-entry.is-shadow-open:not(:disabled):focus-visible {
+  opacity: 1;
+}
+
+.townsfolk-unknown {
+  min-height: 1.1em;
 }
 
 .townsfolk-entry-copy { min-width: 0; display: grid; gap: 6px; }
@@ -1790,6 +1795,11 @@ button {
   gap: 4px;
   color: var(--ink);
   transform: translate(-50%, -50%);
+}
+
+.npc-spot.is-silhouette .npc-sprite,
+.npc-spot.is-silhouette .npc-sprite-stack .npc-sprite {
+  filter: brightness(0) opacity(0.72);
 }
 
 .npc-chip {

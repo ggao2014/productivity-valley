@@ -25,6 +25,22 @@ export interface DialogueEntry {
 
 type CharacterDialogue = Partial<Record<DialogueKind, DialogueEntry[]>>
 
+/** First-interaction lines; shown once when `interacted` flips to true. */
+const FIRST_MEET: Record<string, DialogueEntry> = {
+  shendu: { text: '……嗯。你是新来的。', tone: 'neutral' },
+  qinghe: { text: '嘿！新面孔？过来过来！', tone: 'warm' },
+  guwan: { text: '你？行，记住了。', tone: 'annoyed' },
+  jiangxiaoman: { text: '哟，新邻居！饿不饿？', tone: 'warm' },
+  chenshi: { text: '新客啊？先瞧瞧货也行。', tone: 'warm' },
+  taotao: { text: '嗨！糖画要不要看一眼？', tone: 'warm' },
+  linchu: { text: '……你好。', tone: 'shy' },
+  baizhi: { text: '你好呀。我是白芷。', tone: 'warm' },
+  suweiming: { text: '有缘见面。', tone: 'neutral' },
+  yueqingshan: { text: '报到了？认识一下。', tone: 'neutral' },
+  wenjiu: { text: '登记一下。你叫什么？', tone: 'neutral' },
+  hedeng: { text: '新朋友！嘻嘻', tone: 'warm' },
+}
+
 const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
   shendu: {
     chat: [
@@ -1271,10 +1287,15 @@ export function dialogueEntriesFor(
   npcId: string,
   kind: DialogueKind,
 ): readonly DialogueEntry[] {
+  if (kind === 'meet') {
+    const entry = FIRST_MEET[npcId]
+    return entry ? [entry] : []
+  }
   return CORE_DIALOGUE[npcId]?.[kind] ?? []
 }
 
 const GENERIC_DIALOGUE: Record<DialogueKind, DialogueEntry> = {
+  meet: { text: '你们打了个招呼。', tone: 'neutral' },
   chat: { text: '你们聊了聊今天各自做的事。', tone: 'neutral' },
   heart: { text: '你们说了一些平时不会提的事。', tone: 'warm' },
   romance: { text: '对方听完后答应了。', tone: 'shy' },
@@ -1320,6 +1341,16 @@ export function dialogueFor(
   index = 0,
   now = new Date(),
 ): DialogueState {
+  if (kind === 'meet') {
+    const entry = FIRST_MEET[npcId] ?? GENERIC_DIALOGUE.meet
+    return {
+      entryId: `${npcId}-meet-0`,
+      npcId,
+      kind,
+      text: entry.text,
+      tone: entry.tone,
+    }
+  }
   const entries = CORE_DIALOGUE[npcId]?.[kind]
   if (!entries?.length) {
     return {
