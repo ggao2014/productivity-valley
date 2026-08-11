@@ -405,16 +405,6 @@ button {
   filter: brightness(0) opacity(.64);
 }
 
-.townsfolk-entry.is-shadow-open {
-  cursor: pointer;
-  opacity: .88;
-}
-
-.townsfolk-entry.is-shadow-open:not(:disabled):hover,
-.townsfolk-entry.is-shadow-open:not(:disabled):focus-visible {
-  opacity: 1;
-}
-
 .townsfolk-unknown {
   min-height: 1.1em;
 }
