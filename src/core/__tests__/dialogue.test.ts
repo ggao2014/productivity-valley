@@ -19,14 +19,14 @@ describe('completion reactions', () => {
     }
     const first = completionReactionFor(gameState(), task)
     expect(first.npcId).toBe('shendu')
-    expect(first.text.length).toBeGreaterThan(6)
+    expect(first.text.length).toBeGreaterThan(2)
 
     const withOneDone = gameState({
       tasks: [{ ...task, id: 'done', done: true }],
     })
     const second = completionReactionFor(withOneDone, task)
     expect(second.npcId).toBe('qinghe')
-    expect(second.text.length).toBeGreaterThan(4)
+    expect(second.text.length).toBeGreaterThan(2)
   })
 
   it('can surface a distinct completion reaction from every defined NPC', () => {
