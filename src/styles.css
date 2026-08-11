@@ -4284,7 +4284,7 @@ button {
 .today-reward .game-icon { width: 13px; height: 13px; }
 .coin-reward { color: #9a6a18; }
 .bond-reward { color: #477c63; }
-.today-complete { min-height: 34px; padding: 6px 11px; }
+.today-complete { min-height: 34px; min-width: 34px; padding: 6px; display: inline-grid; place-items: center; }
 .today-action-row .task-actions { align-items: center; }
 .today-action-row .task-actions .icon-button { width: 28px; height: 28px; border-color: transparent; background: transparent; }
 .today-action-row .task-actions .icon-button:hover { border-color: rgba(96,73,45,.16); background: rgba(96,73,45,.07); }
