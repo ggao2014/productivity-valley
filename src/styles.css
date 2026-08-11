@@ -4313,11 +4313,6 @@ button {
   font-size: 1.05rem;
   color: var(--moss-deep);
 }
-.timeline-slot-done {
-  margin: 8px 0 0;
-  font-size: 0.78rem;
-  color: var(--moss-deep);
-}
 .timeline-foot { margin: 0 0 10px; }
 .slot-picker {
   display: inline-flex;

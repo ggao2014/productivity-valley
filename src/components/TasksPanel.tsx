@@ -229,9 +229,6 @@ function TodayView({
                   />
                 ))}
               </div>
-              {openInSlot === 0 && doneInSlot > 0 && (
-                <p className="timeline-slot-done">这格做完啦</p>
-              )}
             </section>
           )
         })}
