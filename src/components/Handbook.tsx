@@ -143,73 +143,67 @@ function TownsfolkPages({
   state: ReturnType<typeof useGameStore.getState>
   onOpen: (id: string) => void
 }) {
-  const middle = Math.ceil(NPC_DEFS.length / 2)
-  const groups = [NPC_DEFS.slice(0, middle), NPC_DEFS.slice(middle)]
   const knownCount = NPC_DEFS.filter((npc) => state.npc[npc.id]?.interacted).length
 
   return (
-    <>
-      {groups.map((group, groupIndex) => (
-        <article className="handbook-leaf" key={groupIndex}>
-          <div className="handbook-leaf-heading">
-            <h3>镇民</h3>
-            {groupIndex === 0 && <span>{knownCount}/{NPC_DEFS.length}</span>}
-          </div>
-          <div className="townsfolk-index">
-            {group.map((npc) => {
-              const progress = state.npc[npc.id]
-              const met = Boolean(progress?.met)
-              const interacted = Boolean(progress?.interacted)
-              const friendship = interacted
-                ? friendshipStage(progress.friendshipPoints)
-                : 0
-              const romance = interacted
-                ? romanceStage(progress.romancePoints, progress.romanceUnlocked, progress.livingAtHome)
-                : 0
-              return (
-                <button
-                  key={npc.id}
-                  className={`townsfolk-entry${interacted ? '' : ' is-mystery'}${
-                    met && !interacted ? ' is-shadow-open' : ''
-                  }`}
-                  disabled={!met}
-                  onClick={() => onOpen(npc.id)}
-                  aria-label={
-                    !met
-                      ? '未遇见的镇民'
-                      : interacted
-                        ? `查看${npc.name}`
-                        : '陌生的镇民'
-                  }
-                >
-                  <span className="townsfolk-portrait">
-                    <img
-                      src={publicAsset(spriteForNpc(npc.id) ?? PLACEHOLDER_SPRITE)}
-                      alt=""
-                      draggable={false}
-                    />
-                  </span>
-                  <span className="townsfolk-entry-copy">
-                    {interacted ? (
-                      <>
-                        <strong>{npc.name}</strong>
-                        <small>
-                          <span title={`友情：${FRIENDSHIP_LABELS[friendship]}`}><GameIcon name="chat" />{friendship}</span>
-                          {progress.romanceUnlocked && <span title={`喜欢：${ROMANCE_LABELS[romance]}`}><GameIcon name="heart" />{romance}</span>}
-                          {progress.livingAtHome && <span title="同住"><GameIcon name="home" /></span>}
-                        </small>
-                      </>
-                    ) : (
-                      <strong className="townsfolk-unknown" aria-hidden="true"> </strong>
-                    )}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </article>
-      ))}
-    </>
+    <article className="handbook-leaf townsfolk-leaf">
+      <div className="handbook-leaf-heading">
+        <h3>镇民</h3>
+        <span>{knownCount}/{NPC_DEFS.length}</span>
+      </div>
+      <div className="townsfolk-index">
+        {NPC_DEFS.map((npc) => {
+          const progress = state.npc[npc.id]
+          const met = Boolean(progress?.met)
+          const interacted = Boolean(progress?.interacted)
+          const friendship = interacted
+            ? friendshipStage(progress.friendshipPoints)
+            : 0
+          const romance = interacted
+            ? romanceStage(progress.romancePoints, progress.romanceUnlocked, progress.livingAtHome)
+            : 0
+          return (
+            <button
+              key={npc.id}
+              className={`townsfolk-entry${interacted ? '' : ' is-mystery'}${
+                met && !interacted ? ' is-shadow-open' : ''
+              }`}
+              disabled={!met}
+              onClick={() => onOpen(npc.id)}
+              aria-label={
+                !met
+                  ? '未遇见的镇民'
+                  : interacted
+                    ? `查看${npc.name}`
+                    : '陌生的镇民'
+              }
+            >
+              <span className="townsfolk-portrait">
+                <img
+                  src={publicAsset(spriteForNpc(npc.id) ?? PLACEHOLDER_SPRITE)}
+                  alt=""
+                  draggable={false}
+                />
+              </span>
+              <span className="townsfolk-entry-copy">
+                {interacted ? (
+                  <>
+                    <strong>{npc.name}</strong>
+                    <small>
+                      <span title={`友情：${FRIENDSHIP_LABELS[friendship]}`}><GameIcon name="chat" />{friendship}</span>
+                      {progress.romanceUnlocked && <span title={`喜欢：${ROMANCE_LABELS[romance]}`}><GameIcon name="heart" />{romance}</span>}
+                      {progress.livingAtHome && <span title="同住"><GameIcon name="home" /></span>}
+                    </small>
+                  </>
+                ) : (
+                  <strong className="townsfolk-unknown" aria-hidden="true"> </strong>
+                )}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </article>
   )
 }
 

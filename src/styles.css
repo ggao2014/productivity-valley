@@ -340,6 +340,21 @@ button {
   gap: 10px;
 }
 
+.handbook-page-townsfolk .handbook-spread {
+  grid-template-columns: minmax(0, 1fr);
+  background:
+    repeating-linear-gradient(0deg, rgba(114, 90, 55, .025) 0 1px, transparent 1px 5px),
+    #f7efd8;
+}
+
+.handbook-page-townsfolk .townsfolk-leaf {
+  box-shadow: none;
+}
+
+.handbook-page-townsfolk .townsfolk-index {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .townsfolk-entry {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
@@ -4394,6 +4409,7 @@ button {
     border-top: 1px dashed rgba(99, 72, 43, .22);
   }
   .collection-index { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .handbook-page-townsfolk .townsfolk-index { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 470px) {
@@ -4403,6 +4419,7 @@ button {
   .handbook-entry { padding-inline: 8px; }
   .handbook-tabs button span { font-size: .72rem; }
   .townsfolk-index { grid-template-columns: 1fr; }
+  .handbook-page-townsfolk .townsfolk-index { grid-template-columns: 1fr; }
   .collection-index { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .record-numbers { grid-template-columns: repeat(2, 1fr); }
   .valley-scene {
