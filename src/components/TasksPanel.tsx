@@ -414,8 +414,8 @@ function TimelineRow({
             bond={TASK_REWARDS[item.task.difficulty].bond}
           />
           <div className="task-actions">
-            <button className="btn today-complete" onClick={() => completeTask(item.task.id)}>
-              <GameIcon name="check" />完成
+            <button className="btn today-complete" onClick={() => completeTask(item.task.id)} aria-label="完成">
+              <GameIcon name="check" />
             </button>
             <button
               className="icon-button"
@@ -474,8 +474,9 @@ function TimelineRow({
             <button
               className="btn today-complete"
               onClick={() => completeProjectBlock(item.project.id, item.blockId)}
+              aria-label="完成"
             >
-              <GameIcon name="check" />完成
+              <GameIcon name="check" />
             </button>
           </>
         )
@@ -625,7 +626,7 @@ function ProjectsView() {
                   <div className={`project-block${block.done ? ' done' : ''}`} key={block.id}>
                     <div><strong>{block.title}</strong><span>{DIFFICULTY_LABELS[block.difficulty]}{block.awardedCoins !== undefined ? ` · +${block.awardedCoins} 金币` : ''}</span></div>
                     <div className="block-actions">
-                      {block.done ? <button className="btn secondary" onClick={() => undoProjectBlock(selected.id, block.id)}><GameIcon name="undo" />撤销</button> : selected.status === 'active' ? <button className="btn" onClick={() => completeProjectBlock(selected.id, block.id)}><GameIcon name="check" />完成</button> : null}
+                      {block.done ? <button className="btn secondary" onClick={() => undoProjectBlock(selected.id, block.id)}><GameIcon name="undo" />撤销</button> : selected.status === 'active' ? <button className="btn" onClick={() => completeProjectBlock(selected.id, block.id)} aria-label="完成"><GameIcon name="check" /></button> : null}
                       {!block.done && <><button className="icon-button" disabled={index === 0} onClick={() => moveProjectBlock(selected.id, block.id, -1)} aria-label="上移">↑</button><button className="icon-button" disabled={index === selected.blocks.length - 1} onClick={() => moveProjectBlock(selected.id, block.id, 1)} aria-label="下移">↓</button><button className="icon-button danger-text" onClick={() => deleteProjectBlock(selected.id, block.id)} aria-label="删除分块">×</button></>}
                     </div>
                   </div>
