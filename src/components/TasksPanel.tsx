@@ -14,10 +14,19 @@ import {
   nextBlockReward,
   projectProgress,
 } from '../core/productivity'
+import {
+  PLAN_SLOTS,
+  PLAN_SLOT_LABELS,
+  buildTimelineItems,
+  groupBySlot,
+  type TimelineItem,
+} from '../core/plan'
 import type {
   Difficulty,
   HabitSchedule,
   HabitScheduleType,
+  PlanSlot,
+  PlanTarget,
   Project,
   ProjectSize,
   TaskCategory,
@@ -104,9 +113,7 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
           <small>{activeDayStreak(tasks)} 天活跃</small>
         </section>
         <TodayView
-          dueHabits={dueHabits}
           rewardedHabitIds={rewardedHabitIds}
-          activeProjects={activeProjects}
           onboardingStep={onboardingStep}
         />
         </>
@@ -118,18 +125,16 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
 }
 
 function TodayView({
-  dueHabits,
   rewardedHabitIds,
-  activeProjects,
   onboardingStep,
 }: {
-  dueHabits: ReturnType<typeof useGameStore.getState>['habits']
   rewardedHabitIds: string[]
-  activeProjects: Project[]
   onboardingStep: number
 }) {
   const tasks = useGameStore((s) => s.tasks)
+  const habits = useGameStore((s) => s.habits)
   const projects = useGameStore((s) => s.projects)
+  const plans = useGameStore((s) => s.plans)
   const adjustHabit = useGameStore((s) => s.adjustHabit)
   const completeProjectBlock = useGameStore((s) => s.completeProjectBlock)
   const addTask = useGameStore((s) => s.addTask)
@@ -138,6 +143,7 @@ function TodayView({
   const undoCompleteTask = useGameStore((s) => s.undoCompleteTask)
   const undoProjectBlock = useGameStore((s) => s.undoProjectBlock)
   const deleteTask = useGameStore((s) => s.deleteTask)
+  const setPlan = useGameStore((s) => s.setPlan)
   const [title, setTitle] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty>('small')
   const [category, setCategory] = useState<TaskCategory>('errand')
@@ -145,16 +151,28 @@ function TodayView({
   const [editTitle, setEditTitle] = useState('')
   const [editDifficulty, setEditDifficulty] = useState<Difficulty>('small')
   const [editCategory, setEditCategory] = useState<TaskCategory>('errand')
-  const open = tasks.filter((task) => !task.done)
-  const done = tasks.filter((task) => task.done && taskCompletedOn(task)).slice(0, 8)
-  const nextBlocks = activeProjects
-    .map((project) => ({ project, block: project.blocks.find((block) => !block.done) }))
-    .filter((item) => item.block)
-  const completedHabits = dueHabits.filter((habit) => (habitEntryFor(habit)?.count ?? 0) >= habit.targetCount)
-  const completedBlocks = projects.flatMap((project) => project.blocks
-    .filter((block) => block.done && block.completedAt && localDayKey(new Date(block.completedAt)) === localDayKey())
-    .map((block) => ({ project, block })))
-  const completedCount = completedHabits.length + completedBlocks.length + done.length
+
+  const todayKey = localDayKey()
+  const timelineItems = useMemo(
+    () =>
+      buildTimelineItems({
+        plans: plans ?? [],
+        tasks,
+        habits,
+        projects,
+        dayKey: todayKey,
+      }),
+    [plans, tasks, habits, projects, todayKey],
+  )
+  const grouped = groupBySlot(timelineItems)
+  const openCount = timelineItems.filter((item) => !item.done).length
+  const doneCount = timelineItems.filter((item) => item.done).length
+
+  function targetFor(item: TimelineItem): PlanTarget {
+    if (item.kind === 'task') return { kind: 'task', id: item.task.id }
+    if (item.kind === 'habit') return { kind: 'habit', id: item.habit.id }
+    return { kind: 'block', projectId: item.project.id, blockId: item.blockId }
+  }
 
   return (
     <>
@@ -170,122 +188,299 @@ function TodayView({
         <button className="btn" type="submit"><GameIcon name="plus" />添加</button>
       </form>
 
-      <TodaySectionHeading title="习惯" done={completedHabits.length} total={dueHabits.length} />
-      <div className="list today-action-list">
-        {dueHabits.length === 0 && <p className="inline-empty">今天没有到期习惯</p>}
-        {dueHabits.map((habit) => {
-          const entry = habitEntryFor(habit)
-          const count = entry?.count ?? 0
-          const doneToday = count >= habit.targetCount
-          const rewarded = rewardedHabitIds.includes(habit.id)
+      <p className="hint timeline-hint">把事情排进上午 / 下午 / 晚上</p>
+
+      <div className="day-timeline" aria-label="今日时间轴">
+        {PLAN_SLOTS.map((slot) => {
+          const items = grouped[slot]
+          const openInSlot = items.filter((item) => !item.done).length
+          const doneInSlot = items.filter((item) => item.done).length
           return (
-            <div className={`row productivity-row today-action-row is-habit${doneToday ? ' done' : ''}`} key={habit.id}>
-              <div className="row-main">
-                <strong className="task-title-with-category"><CategoryMark category={habit.category} />{habit.title}</strong>
-                <span className="muted">{count}/{habit.targetCount}</span>
+            <section key={slot} className={`timeline-slot slot-${slot}`}>
+              <header className="timeline-slot-head">
+                <h3>{PLAN_SLOT_LABELS[slot]}</h3>
+                <span className="muted">
+                  {items.length === 0 ? '空' : `${doneInSlot}/${items.length}`}
+                </span>
+              </header>
+              <div className="list today-action-list">
+                {items.length === 0 && <p className="inline-empty">还没有安排</p>}
+                {items.map((item) => (
+                  <TimelineRow
+                    key={item.id}
+                    item={item}
+                    slot={slot}
+                    rewardedHabitIds={rewardedHabitIds}
+                    onboardingStep={onboardingStep}
+                    editingId={editingId}
+                    editTitle={editTitle}
+                    editDifficulty={editDifficulty}
+                    editCategory={editCategory}
+                    setEditingId={setEditingId}
+                    setEditTitle={setEditTitle}
+                    setEditDifficulty={setEditDifficulty}
+                    setEditCategory={setEditCategory}
+                    editTask={editTask}
+                    completeTask={completeTask}
+                    deleteTask={deleteTask}
+                    adjustHabit={adjustHabit}
+                    completeProjectBlock={completeProjectBlock}
+                    setPlan={(nextSlot) => setPlan(targetFor(item), nextSlot)}
+                  />
+                ))}
               </div>
-              <RewardInline coins={rewarded ? HABIT_REWARD.coins : 0} bond={rewarded ? HABIT_REWARD.bond : 0} />
-              {habit.mode === 'count' ? (
-                <button
-                  className={doneToday ? 'btn secondary today-complete' : 'btn today-complete'}
-                  disabled={doneToday}
-                  onClick={() => adjustHabit(habit.id, 1)}
-                  aria-label={`${habit.title}记录一次，当前 ${count}/${habit.targetCount}`}
-                >
-                  <GameIcon name="check" />{doneToday ? '已完成' : '记录一次'}
-                </button>
-              ) : (
-                <button className={doneToday ? 'btn secondary today-complete' : 'btn today-complete'} onClick={() => adjustHabit(habit.id, doneToday ? -1 : 1)}>
-                  <GameIcon name={doneToday ? 'undo' : 'check'} />{doneToday ? '撤销' : '打卡'}
-                </button>
+              {openInSlot === 0 && doneInSlot > 0 && (
+                <p className="timeline-slot-done">这格做完啦</p>
               )}
-            </div>
+            </section>
           )
         })}
       </div>
 
-      <TodaySectionHeading title="项目下一步" done={completedBlocks.length} total={activeProjects.length} />
-      <div className="list today-action-list">
-        {nextBlocks.length === 0 && <p className="inline-empty">没有进行中的项目分块</p>}
-        {nextBlocks.map(({ project, block }) => {
-          if (!block) return null
-          const progress = projectProgress(project)
-          const reward = nextBlockReward(project, block.id)
-          return (
-            <div className="row productivity-row today-action-row is-project" key={project.id}>
-              <div className="row-main">
-                <strong className="task-title-with-category"><CategoryMark category={project.category} />{block.title}</strong>
-                <span className="muted">{project.title} · {progress.percent}% · {DIFFICULTY_LABELS[block.difficulty]}</span>
-              </div>
-              <RewardInline coins={reward.coins} bond={reward.bond} />
-              <button className="btn today-complete" onClick={() => completeProjectBlock(project.id, block.id)}><GameIcon name="check" />完成</button>
-            </div>
-          )
-        })}
-      </div>
+      {(openCount > 0 || doneCount > 0) && (
+        <p className="muted timeline-foot">今天 {doneCount}/{openCount + doneCount}</p>
+      )}
 
-      <TodaySectionHeading title="临时待办" done={done.length} total={open.length + done.length} />
-      <div className="list today-action-list">
-        {open.length === 0 && <p className="inline-empty">没有临时待办</p>}
-        {open.map((task) => (
-          <div key={task.id} className={`row task-row today-action-row is-todo${onboardingStep === 2 ? ' guide-target' : ''}`}>
-            {editingId === task.id ? (
-              <form className="task-edit-form" onSubmit={(event) => {
-                event.preventDefault()
-                if (!editTitle.trim()) return
-                editTask(task.id, editTitle, editDifficulty, editCategory)
-                setEditingId(null)
-              }}>
-                <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} aria-label="编辑待办标题" autoFocus />
-                <DifficultySelect value={editDifficulty} onChange={setEditDifficulty} label="编辑难度" />
-                <CategoryPicker value={editCategory} onChange={setEditCategory} compact />
-                <button className="btn" type="submit">保存</button>
-                <button className="btn secondary" type="button" onClick={() => setEditingId(null)}>取消</button>
-              </form>
-            ) : (
-              <>
-                <div className="row-main">
-                  <strong className="task-title-with-category">
-                    <CategoryMark category={task.category} />{task.title}
-                  </strong>
-                  <span className="muted">{TASK_REWARDS[task.difficulty].label}</span>
-                </div>
-                <RewardInline coins={TASK_REWARDS[task.difficulty].coins} bond={TASK_REWARDS[task.difficulty].bond} />
-                <div className="task-actions">
-                  <button className="btn today-complete" onClick={() => completeTask(task.id)}><GameIcon name="check" />完成</button>
-                  <button className="icon-button" aria-label={`编辑${task.title}`} title="编辑" onClick={() => {
-                    setEditingId(task.id)
-                    setEditTitle(task.title)
-                    setEditDifficulty(task.difficulty)
-                    setEditCategory(task.category ?? 'errand')
-                  }}><GameIcon name="edit" /></button>
-                  <button className="icon-button danger-text" aria-label={`删除${task.title}`} title="删除" onClick={() => deleteTask(task.id)}><GameIcon name="trash" /></button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-      {completedCount > 0 && (
+      {doneCount > 0 && (
         <details className="completed-details">
-          <summary>已完成 {completedCount}</summary>
+          <summary>已完成 {doneCount}</summary>
           <div className="list">
-            {completedHabits.map((habit) => (
-              <div key={`habit-${habit.id}`} className="row done task-row"><div className="row-main"><strong>{habit.title}</strong><span className="muted">习惯</span></div>{habit.mode === 'check' && <button className="btn secondary" onClick={() => adjustHabit(habit.id, -1)}><GameIcon name="undo" />撤销</button>}</div>
-            ))}
-            {completedBlocks.map(({ project, block }) => (
-              <div key={`block-${block.id}`} className="row done task-row"><div className="row-main"><strong>{block.title}</strong><span className="muted">{project.title}</span></div><button className="btn secondary" onClick={() => undoProjectBlock(project.id, block.id)}><GameIcon name="undo" />撤销</button></div>
-            ))}
-            {done.map((task) => (
-              <div key={task.id} className="row done task-row">
-                <div className="row-main"><strong className="task-title-with-category"><CategoryMark category={task.category} />{task.title}</strong><span className="muted">+{task.awardedCoins ?? 0} 金币</span></div>
-                {taskCompletedOn(task) && <button className="btn secondary" onClick={() => undoCompleteTask(task.id)}><GameIcon name="undo" />撤销</button>}
-              </div>
-            ))}
+            {timelineItems.filter((item) => item.done).map((item) => {
+              if (item.kind === 'habit') {
+                return (
+                  <div key={`done-${item.id}`} className="row done task-row">
+                    <div className="row-main">
+                      <strong>{item.habit.title}</strong>
+                      <span className="muted">习惯 · {PLAN_SLOT_LABELS[item.slot]}</span>
+                    </div>
+                    {item.habit.mode === 'check' && (
+                      <button className="btn secondary" onClick={() => adjustHabit(item.habit.id, -1)}>
+                        <GameIcon name="undo" />撤销
+                      </button>
+                    )}
+                  </div>
+                )
+              }
+              if (item.kind === 'block') {
+                const block = item.project.blocks.find((entry) => entry.id === item.blockId)
+                if (!block) return null
+                return (
+                  <div key={`done-${item.id}`} className="row done task-row">
+                    <div className="row-main">
+                      <strong>{block.title}</strong>
+                      <span className="muted">{item.project.title} · {PLAN_SLOT_LABELS[item.slot]}</span>
+                    </div>
+                    <button className="btn secondary" onClick={() => undoProjectBlock(item.project.id, item.blockId)}>
+                      <GameIcon name="undo" />撤销
+                    </button>
+                  </div>
+                )
+              }
+              return (
+                <div key={`done-${item.id}`} className="row done task-row">
+                  <div className="row-main">
+                    <strong className="task-title-with-category">
+                      <CategoryMark category={item.task.category} />
+                      {item.task.title}
+                    </strong>
+                    <span className="muted">+{item.task.awardedCoins ?? 0} 金币 · {PLAN_SLOT_LABELS[item.slot]}</span>
+                  </div>
+                  {taskCompletedOn(item.task) && (
+                    <button className="btn secondary" onClick={() => undoCompleteTask(item.task.id)}>
+                      <GameIcon name="undo" />撤销
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </details>
       )}
     </>
+  )
+}
+
+function TimelineRow({
+  item,
+  slot,
+  rewardedHabitIds,
+  onboardingStep,
+  editingId,
+  editTitle,
+  editDifficulty,
+  editCategory,
+  setEditingId,
+  setEditTitle,
+  setEditDifficulty,
+  setEditCategory,
+  editTask,
+  completeTask,
+  deleteTask,
+  adjustHabit,
+  completeProjectBlock,
+  setPlan,
+}: {
+  item: TimelineItem
+  slot: PlanSlot
+  rewardedHabitIds: string[]
+  onboardingStep: number
+  editingId: string | null
+  editTitle: string
+  editDifficulty: Difficulty
+  editCategory: TaskCategory
+  setEditingId: (id: string | null) => void
+  setEditTitle: (title: string) => void
+  setEditDifficulty: (difficulty: Difficulty) => void
+  setEditCategory: (category: TaskCategory) => void
+  editTask: (id: string, title: string, difficulty: Difficulty, category?: TaskCategory) => void
+  completeTask: (id: string) => void
+  deleteTask: (id: string) => void
+  adjustHabit: (id: string, delta: number) => void
+  completeProjectBlock: (projectId: string, blockId: string) => void
+  setPlan: (slot: PlanSlot) => void
+}) {
+  const kindClass =
+    item.kind === 'habit' ? 'is-habit' : item.kind === 'block' ? 'is-project' : 'is-todo'
+
+  if (item.kind === 'task' && editingId === item.task.id) {
+    return (
+      <div className={`row productivity-row today-action-row ${kindClass}`}>
+        <form
+          className="task-edit-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!editTitle.trim()) return
+            editTask(item.task.id, editTitle, editDifficulty, editCategory)
+            setEditingId(null)
+          }}
+        >
+          <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} aria-label="编辑待办标题" autoFocus />
+          <DifficultySelect value={editDifficulty} onChange={setEditDifficulty} label="编辑难度" />
+          <CategoryPicker value={editCategory} onChange={setEditCategory} compact />
+          <button className="btn" type="submit">保存</button>
+          <button className="btn secondary" type="button" onClick={() => setEditingId(null)}>取消</button>
+        </form>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={`row productivity-row today-action-row timeline-row ${kindClass}${item.done ? ' done' : ''}${
+        item.kind === 'task' && onboardingStep === 2 ? ' guide-target' : ''
+      }`}
+    >
+      <div className="row-main">
+        <strong className="task-title-with-category">
+          {item.kind === 'task' && <CategoryMark category={item.task.category} />}
+          {item.kind === 'habit' && <CategoryMark category={item.habit.category} />}
+          {item.kind === 'block' && <CategoryMark category={item.project.category} />}
+          {item.kind === 'task' && item.task.title}
+          {item.kind === 'habit' && item.habit.title}
+          {item.kind === 'block' &&
+            (item.project.blocks.find((block) => block.id === item.blockId)?.title ?? '分块')}
+        </strong>
+        <span className="muted">
+          {item.kind === 'task' && TASK_REWARDS[item.task.difficulty].label}
+          {item.kind === 'habit' && (() => {
+            const entry = habitEntryFor(item.habit)
+            return `${entry?.count ?? 0}/${item.habit.targetCount} · 习惯`
+          })()}
+          {item.kind === 'block' &&
+            `${item.project.title} · ${projectProgress(item.project).percent}%`}
+        </span>
+        {!item.done && (
+          <label className="slot-picker">
+            <span className="visually-hidden">时段</span>
+            <select
+              value={slot}
+              aria-label="排到时段"
+              onChange={(event) => setPlan(event.target.value as PlanSlot)}
+            >
+              {PLAN_SLOTS.map((option) => (
+                <option key={option} value={option}>
+                  {PLAN_SLOT_LABELS[option]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
+      {item.kind === 'task' && !item.done && (
+        <>
+          <RewardInline
+            coins={TASK_REWARDS[item.task.difficulty].coins}
+            bond={TASK_REWARDS[item.task.difficulty].bond}
+          />
+          <div className="task-actions">
+            <button className="btn today-complete" onClick={() => completeTask(item.task.id)}>
+              <GameIcon name="check" />完成
+            </button>
+            <button
+              className="icon-button"
+              aria-label={`编辑${item.task.title}`}
+              title="编辑"
+              onClick={() => {
+                setEditingId(item.task.id)
+                setEditTitle(item.task.title)
+                setEditDifficulty(item.task.difficulty)
+                setEditCategory(item.task.category ?? 'errand')
+              }}
+            >
+              <GameIcon name="edit" />
+            </button>
+            <button
+              className="icon-button danger-text"
+              aria-label={`删除${item.task.title}`}
+              title="删除"
+              onClick={() => deleteTask(item.task.id)}
+            >
+              <GameIcon name="trash" />
+            </button>
+          </div>
+        </>
+      )}
+
+      {item.kind === 'habit' && !item.done && (
+        <>
+          <RewardInline
+            coins={rewardedHabitIds.includes(item.habit.id) ? HABIT_REWARD.coins : 0}
+            bond={rewardedHabitIds.includes(item.habit.id) ? HABIT_REWARD.bond : 0}
+          />
+          {item.habit.mode === 'count' ? (
+            <button
+              className="btn today-complete"
+              onClick={() => adjustHabit(item.habit.id, 1)}
+              aria-label={`${item.habit.title}记录一次`}
+            >
+              <GameIcon name="check" />记录一次
+            </button>
+          ) : (
+            <button className="btn today-complete" onClick={() => adjustHabit(item.habit.id, 1)}>
+              <GameIcon name="check" />打卡
+            </button>
+          )}
+        </>
+      )}
+
+      {item.kind === 'block' && !item.done && (() => {
+        const block = item.project.blocks.find((entry) => entry.id === item.blockId)
+        if (!block) return null
+        const reward = nextBlockReward(item.project, block.id)
+        return (
+          <>
+            <RewardInline coins={reward.coins} bond={reward.bond} />
+            <button
+              className="btn today-complete"
+              onClick={() => completeProjectBlock(item.project.id, item.blockId)}
+            >
+              <GameIcon name="check" />完成
+            </button>
+          </>
+        )
+      })()}
+    </div>
   )
 }
 
@@ -467,10 +662,6 @@ function ProjectsView() {
 
 function SectionHeading({ title, detail }: { title: string; detail: string }) {
   return <div className="productivity-section-heading"><h2>{title}</h2><span className="section-info" title={detail} aria-label={detail}>ⓘ</span></div>
-}
-
-function TodaySectionHeading({ title, done, total }: { title: string; done: number; total: number }) {
-  return <div className="today-section-heading"><h2>{title}</h2><span>{done}/{total}</span></div>
 }
 
 function RewardInline({ coins, bond }: { coins: number; bond: number }) {

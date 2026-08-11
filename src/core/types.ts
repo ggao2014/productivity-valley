@@ -73,6 +73,19 @@ export interface Task {
 
 export type TaskCategory = 'work' | 'study' | 'life' | 'health' | 'errand'
 
+export type PlanSlot = 'morning' | 'afternoon' | 'evening' | 'anytime'
+
+export type PlanTarget =
+  | { kind: 'task'; id: string }
+  | { kind: 'habit'; id: string }
+  | { kind: 'block'; projectId: string; blockId: string }
+
+export interface PlanAssignment {
+  dayKey: string
+  slot: PlanSlot
+  target: PlanTarget
+}
+
 export type HabitMode = 'check' | 'count'
 export type HabitScheduleType = 'daily' | 'weekdays' | 'selected' | 'weekly'
 
@@ -163,6 +176,7 @@ export interface GameState {
   tasks: Task[]
   habits: Habit[]
   projects: Project[]
+  plans: PlanAssignment[]
   habitRewardSnapshots: Record<string, string[]>
   rooms: RoomInstance[]
   courtyardLevel: CourtyardLevel

@@ -4292,6 +4292,48 @@ button {
 .completed-details { margin-bottom: 12px; padding: 10px 12px; border-radius: 13px; background: rgba(96,73,45,.05); }
 .completed-details summary { font-size: .78rem; }
 
+.timeline-hint { margin: 0 0 10px; }
+.day-timeline { display: grid; gap: 12px; margin-bottom: 12px; }
+.timeline-slot {
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(92, 122, 90, 0.16);
+  background: rgba(255, 253, 248, 0.55);
+}
+.timeline-slot-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.timeline-slot-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--moss-deep);
+}
+.timeline-slot-done {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--moss-deep);
+}
+.timeline-foot { margin: 0 0 10px; }
+.slot-picker {
+  display: inline-flex;
+  margin-top: 4px;
+}
+.slot-picker select {
+  min-height: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 73, 45, 0.18);
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.timeline-row .row-main { gap: 4px; }
+
 @media (max-width: 520px) {
   .today-summary { grid-template-columns: 1fr auto; gap: 8px 12px; }
   .today-summary-items { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; gap: 13px; }

@@ -29,6 +29,7 @@ export function gameState(overrides: Partial<GameState> = {}): GameState {
     tasks: [],
     habits: [],
     projects: [],
+    plans: [],
     habitRewardSnapshots: {},
     rooms: [{ id: 'living-1', type: 'living', occupantId: null }],
     courtyardLevel: 1,

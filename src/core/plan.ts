@@ -1,0 +1,255 @@
+import type { Habit, PlanAssignment, PlanSlot, PlanTarget, Project, Task } from './types'
+import { localDayKey } from './economy'
+import { habitCompletedOn, habitDueOn } from './productivity'
+
+export const PLAN_SLOTS: PlanSlot[] = ['morning', 'afternoon', 'evening', 'anytime']
+
+export const PLAN_SLOT_LABELS: Record<PlanSlot, string> = {
+  morning: '上午',
+  afternoon: '下午',
+  evening: '晚上',
+  anytime: '有空再做',
+}
+
+export function planTargetKey(target: PlanTarget): string {
+  if (target.kind === 'task') return `task:${target.id}`
+  if (target.kind === 'habit') return `habit:${target.id}`
+  return `block:${target.projectId}:${target.blockId}`
+}
+
+export function samePlanTarget(a: PlanTarget, b: PlanTarget): boolean {
+  return planTargetKey(a) === planTargetKey(b)
+}
+
+export function findPlan(
+  plans: PlanAssignment[],
+  dayKey: string,
+  target: PlanTarget,
+): PlanAssignment | undefined {
+  return plans.find(
+    (plan) => plan.dayKey === dayKey && samePlanTarget(plan.target, target),
+  )
+}
+
+export function slotForPlan(
+  plans: PlanAssignment[],
+  dayKey: string,
+  target: PlanTarget,
+): PlanSlot {
+  return findPlan(plans, dayKey, target)?.slot ?? 'anytime'
+}
+
+export function upsertPlan(
+  plans: PlanAssignment[],
+  dayKey: string,
+  target: PlanTarget,
+  slot: PlanSlot,
+): PlanAssignment[] {
+  const without = plans.filter(
+    (plan) => !(plan.dayKey === dayKey && samePlanTarget(plan.target, target)),
+  )
+  return [...without, { dayKey, slot, target }]
+}
+
+export function removePlansForTarget(
+  plans: PlanAssignment[],
+  target: PlanTarget,
+): PlanAssignment[] {
+  return plans.filter((plan) => !samePlanTarget(plan.target, target))
+}
+
+export function removePlansForProject(
+  plans: PlanAssignment[],
+  projectId: string,
+): PlanAssignment[] {
+  return plans.filter(
+    (plan) =>
+      !(plan.target.kind === 'block' && plan.target.projectId === projectId),
+  )
+}
+
+export function removePlansForBlock(
+  plans: PlanAssignment[],
+  projectId: string,
+  blockId: string,
+): PlanAssignment[] {
+  return plans.filter(
+    (plan) =>
+      !(
+        plan.target.kind === 'block' &&
+        plan.target.projectId === projectId &&
+        plan.target.blockId === blockId
+      ),
+  )
+}
+
+export type TimelineItem =
+  | {
+      kind: 'task'
+      id: string
+      task: Task
+      slot: PlanSlot
+      done: boolean
+    }
+  | {
+      kind: 'habit'
+      id: string
+      habit: Habit
+      slot: PlanSlot
+      done: boolean
+    }
+  | {
+      kind: 'block'
+      id: string
+      project: Project
+      blockId: string
+      slot: PlanSlot
+      done: boolean
+    }
+
+function taskPlannedElsewhere(
+  plans: PlanAssignment[],
+  taskId: string,
+  dayKey: string,
+): boolean {
+  return plans.some(
+    (plan) =>
+      plan.target.kind === 'task' &&
+      plan.target.id === taskId &&
+      plan.dayKey !== dayKey,
+  )
+}
+
+function blockPlannedElsewhere(
+  plans: PlanAssignment[],
+  projectId: string,
+  blockId: string,
+  dayKey: string,
+): boolean {
+  return plans.some(
+    (plan) =>
+      plan.target.kind === 'block' &&
+      plan.target.projectId === projectId &&
+      plan.target.blockId === blockId &&
+      plan.dayKey !== dayKey,
+  )
+}
+
+export function buildTimelineItems(input: {
+  plans: PlanAssignment[]
+  tasks: Task[]
+  habits: Habit[]
+  projects: Project[]
+  dayKey?: string
+  now?: Date
+}): TimelineItem[] {
+  const now = input.now ?? new Date()
+  const dayKey = input.dayKey ?? localDayKey(now)
+  const isToday = dayKey === localDayKey(now)
+  const items: TimelineItem[] = []
+
+  for (const task of input.tasks) {
+    const doneToday =
+      !!task.done &&
+      !!task.completedAt &&
+      localDayKey(new Date(task.completedAt)) === dayKey
+    const todayPlan = findPlan(input.plans, dayKey, { kind: 'task', id: task.id })
+
+    if (task.done) {
+      if (!doneToday) continue
+      items.push({
+        kind: 'task',
+        id: task.id,
+        task,
+        slot: todayPlan?.slot ?? 'anytime',
+        done: true,
+      })
+      continue
+    }
+
+    if (taskPlannedElsewhere(input.plans, task.id, dayKey) && !todayPlan) continue
+
+    items.push({
+      kind: 'task',
+      id: task.id,
+      task,
+      slot: todayPlan?.slot ?? 'anytime',
+      done: false,
+    })
+  }
+
+  for (const habit of input.habits) {
+    if (!isToday) continue
+    if (!habitDueOn(habit, now)) continue
+    items.push({
+      kind: 'habit',
+      id: habit.id,
+      habit,
+      slot: slotForPlan(input.plans, dayKey, { kind: 'habit', id: habit.id }),
+      done: habitCompletedOn(habit, dayKey),
+    })
+  }
+
+  for (const project of input.projects) {
+    if (project.status !== 'active') continue
+    const nextOpen = project.blocks.find((block) => !block.done)
+
+    for (const block of project.blocks) {
+      const doneToday =
+        !!block.done &&
+        !!block.completedAt &&
+        localDayKey(new Date(block.completedAt)) === dayKey
+      const todayPlan = findPlan(input.plans, dayKey, {
+        kind: 'block',
+        projectId: project.id,
+        blockId: block.id,
+      })
+      const elsewhere = blockPlannedElsewhere(
+        input.plans,
+        project.id,
+        block.id,
+        dayKey,
+      )
+
+      if (doneToday) {
+        items.push({
+          kind: 'block',
+          id: `${project.id}:${block.id}`,
+          project,
+          blockId: block.id,
+          slot: todayPlan?.slot ?? 'anytime',
+          done: true,
+        })
+        continue
+      }
+
+      if (block.done) continue
+      if (nextOpen?.id !== block.id) continue
+      if (elsewhere && !todayPlan) continue
+
+      items.push({
+        kind: 'block',
+        id: `${project.id}:${block.id}`,
+        project,
+        blockId: block.id,
+        slot: todayPlan?.slot ?? 'anytime',
+        done: false,
+      })
+    }
+  }
+
+  return items
+}
+
+export function groupBySlot(
+  items: TimelineItem[],
+): Record<PlanSlot, TimelineItem[]> {
+  const groups: Record<PlanSlot, TimelineItem[]> = {
+    morning: [],
+    afternoon: [],
+    evening: [],
+    anytime: [],
+  }
+  for (const item of items) groups[item.slot].push(item)
+  return groups
+}

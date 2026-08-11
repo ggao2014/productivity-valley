@@ -35,6 +35,12 @@ import {
 } from './courtyardLandscapes'
 import { trackBetaEvent } from './beta'
 import {
+  removePlansForBlock,
+  removePlansForProject,
+  removePlansForTarget,
+  upsertPlan,
+} from './plan'
+import {
   assignResident,
   canAddRoom,
   canUpgradeBedroomToCourtyard,
@@ -65,6 +71,8 @@ import type {
   GiftReaction,
   NpcProgress,
   OnboardingStep,
+  PlanSlot,
+  PlanTarget,
   RoomInstance,
   TabId,
   Task,
@@ -155,6 +163,7 @@ function createInitial(): GameState {
     tasks: [],
     habits: [],
     projects: [],
+    plans: [],
     habitRewardSnapshots: {},
     rooms: [
       { id: uid(), type: 'living', occupantId: null, level: 1 },
@@ -312,6 +321,7 @@ interface Actions {
   completeTask: (id: string) => void
   undoCompleteTask: (id: string) => void
   deleteTask: (id: string) => void
+  setPlan: (target: PlanTarget, slot: PlanSlot, dayKey?: string) => void
   addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
   adjustHabit: (id: string, delta: number) => void
   archiveHabit: (id: string) => void
@@ -392,6 +402,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       })),
       habits: (saved.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
       projects: (saved.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
+      plans: saved.plans ?? [],
       rooms: normalizedRooms,
       courtyardLevel,
       habitRewardSnapshots: saved.habitRewardSnapshots ?? {},
@@ -640,7 +651,24 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
   },
 
   deleteTask: (id) => {
-    set((s) => persist({ ...s, tasks: s.tasks.filter((t) => t.id !== id) }))
+    set((s) =>
+      persist({
+        ...s,
+        tasks: s.tasks.filter((t) => t.id !== id),
+        plans: removePlansForTarget(s.plans ?? [], { kind: 'task', id }),
+      }),
+    )
+  },
+
+  setPlan: (target, slot, dayKey) => {
+    set((s) => {
+      const key = dayKey ?? localDayKey()
+      return persist({
+        ...s,
+        plans: upsertPlan(s.plans ?? [], key, target, slot),
+        toast: slot === 'anytime' ? '已放到有空再做' : `已排到${slot === 'morning' ? '上午' : slot === 'afternoon' ? '下午' : '晚上'}`,
+      })
+    })
   },
 
   addHabit: (title, mode, targetCount, schedule, category = 'errand') => {
@@ -760,6 +788,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         habits: s.habits.map((habit) =>
           habit.id === id ? { ...habit, active: false } : habit,
         ),
+        plans: removePlansForTarget(s.plans ?? [], { kind: 'habit', id }),
       }),
     ),
 
@@ -841,6 +870,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
               }
             : project,
         ),
+        plans: removePlansForBlock(s.plans ?? [], projectId, blockId),
       }),
     ),
 
@@ -988,6 +1018,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         projects: s.projects.map((project) =>
           project.id === id ? { ...project, status: 'archived' } : project,
         ),
+        plans: removePlansForProject(s.plans ?? [], id),
       }),
     ),
 
