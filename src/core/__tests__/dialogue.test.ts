@@ -9,7 +9,7 @@ import type { DialogueKind, Task } from '../types'
 import { gameState, npcProgress } from './fixtures'
 
 describe('completion reactions', () => {
-  it('rotates among met core characters and respects task difficulty', () => {
+  it('skips praise until someone has been interacted with', () => {
     const task = {
       id: 'new',
       title: '重要任务',
@@ -17,21 +17,44 @@ describe('completion reactions', () => {
       done: false,
       createdAt: '2026-07-30T10:00:00.000Z',
     }
-    const first = completionReactionFor(gameState(), task)
-    expect(first.npcId).toBe('shendu')
-    expect(first.text.length).toBeGreaterThan(2)
+    expect(completionReactionFor(gameState(), task)).toBeNull()
+  })
 
-    const withOneDone = gameState({
-      tasks: [{ ...task, id: 'done', done: true }],
+  it('rotates among interacted characters and respects task difficulty', () => {
+    const task = {
+      id: 'new',
+      title: '重要任务',
+      difficulty: 'large' as const,
+      done: false,
+      createdAt: '2026-07-30T10:00:00.000Z',
+    }
+    const interacted = gameState({
+      npc: Object.fromEntries(
+        NPC_DEFS.map((npc) => [
+          npc.id,
+          npcProgress({ met: npc.starter, interacted: npc.starter }),
+        ]),
+      ),
     })
+    const first = completionReactionFor(interacted, task)
+    expect(first?.npcId).toBe('shendu')
+    expect(first!.text.length).toBeGreaterThan(2)
+
+    const withOneDone = {
+      ...interacted,
+      tasks: [{ ...task, id: 'done', done: true }],
+    }
     const second = completionReactionFor(withOneDone, task)
-    expect(second.npcId).toBe('qinghe')
-    expect(second.text.length).toBeGreaterThan(2)
+    expect(second?.npcId).toBe('qinghe')
+    expect(second!.text.length).toBeGreaterThan(2)
   })
 
   it('can surface a distinct completion reaction from every defined NPC', () => {
     const allMet = Object.fromEntries(
-      NPC_DEFS.map((npc) => [npc.id, npcProgress({ met: true })]),
+      NPC_DEFS.map((npc) => [
+        npc.id,
+        npcProgress({ met: true, interacted: true }),
+      ]),
     )
     const task: Task = {
       id: 'current',
@@ -54,10 +77,10 @@ describe('completion reactions', () => {
       ),
     )
 
-    expect(new Set(reactions.map((reaction) => reaction.npcId))).toEqual(
+    expect(new Set(reactions.map((reaction) => reaction!.npcId))).toEqual(
       new Set(NPC_DEFS.map((npc) => npc.id)),
     )
-    expect(new Set(reactions.map((reaction) => reaction.text)).size).toBe(
+    expect(new Set(reactions.map((reaction) => reaction!.text)).size).toBe(
       NPC_DEFS.length,
     )
   })
@@ -88,6 +111,7 @@ describe('conditional dialogue selection', () => {
       npc: {
         shendu: npcProgress({
           livingAtHome: true,
+          interacted: true,
         }),
       },
     })
@@ -211,7 +235,7 @@ describe('conditional dialogue selection', () => {
     const living = gameState({
       npc: {
         ...plain.npc,
-        taotao: npcProgress({ livingAtHome: true }),
+        taotao: npcProgress({ livingAtHome: true, interacted: true }),
       },
     })
     expect(

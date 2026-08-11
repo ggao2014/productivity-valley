@@ -158,6 +158,8 @@ export interface NpcProgress {
   romanceUnlocked: boolean
   livingAtHome: boolean
   met: boolean
+  /** True after the first real interaction (chat / gift / etc.). */
+  interacted: boolean
   interactionsToday: number
   giftDiscoveries: Record<string, GiftReaction>
   seenDialogueIds: string[]

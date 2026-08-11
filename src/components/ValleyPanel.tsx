@@ -498,12 +498,15 @@ export function NpcSheet() {
           )}
           <div className="npc-sheet-copy">
             <h2>{def.name}</h2>
-            <p className="muted">{def.blurb}</p>
+            <p className="muted">
+              {npcState.interacted ? def.blurb : '还没聊过，先打个招呼吧'}
+            </p>
             {npcState.livingAtHome && (
               <span className="npc-home-mark" title="已入住" aria-label="已入住">
                 <GameIcon name="home" />
               </span>
             )}
+            {npcState.interacted ? (
             <div className="relationship-bars" aria-label="关系进度">
               <div>
                 <span title={`友情：${FRIENDSHIP_LABELS[f]}`} aria-label={`友情：${FRIENDSHIP_LABELS[f]}`}><GameIcon name="chat" />友情</span>
@@ -523,10 +526,13 @@ export function NpcSheet() {
               )}
               <em title="今日互动" aria-label={`今日互动 ${npcState.interactionsToday}/3`}><GameIcon name="spark" />今日 {npcState.interactionsToday}/3</em>
             </div>
+            ) : (
+              <p className="muted npc-sheet-locked-hint">互动后才能查看详情</p>
+            )}
           </div>
         </div>}
 
-        {profilePage === 1 ? (
+        {profilePage === 1 && npcState.interacted ? (
           <div className="journal-story-page">
             <section className="preference-journal journal-page-preferences" aria-labelledby="preference-title">
               <div className="preference-heading">
@@ -710,7 +716,7 @@ export function NpcSheet() {
           </>
         )}
 
-        {relationshipEvents.length > 0 && !activeDialogue && (
+        {npcState.interacted && relationshipEvents.length > 0 && !activeDialogue && (
           <nav className="journal-page-nav" aria-label="人物手记分页">
             {profilePage === 1 && (
               <button

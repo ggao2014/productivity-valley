@@ -390,6 +390,15 @@ button {
   filter: brightness(0) opacity(.64);
 }
 
+.townsfolk-entry.is-unmet-detail {
+  opacity: .9;
+}
+
+.townsfolk-hint {
+  color: #8a7a62;
+  font-size: 0.72rem;
+}
+
 .townsfolk-entry-copy { min-width: 0; display: grid; gap: 6px; }
 .townsfolk-entry-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .townsfolk-entry-copy small { display: flex; align-items: center; gap: 8px; color: #756750; }

@@ -98,6 +98,7 @@ function initialNpc(): Record<string, NpcProgress> {
       romanceUnlocked: false,
       livingAtHome: false,
       met: n.starter,
+      interacted: false,
       interactionsToday: 0,
       giftDiscoveries: {},
       seenDialogueIds: [],
@@ -105,6 +106,16 @@ function initialNpc(): Record<string, NpcProgress> {
     }
   }
   return map
+}
+
+function inferInteracted(progress: NpcProgress): boolean {
+  if (progress.interacted) return true
+  if (progress.friendshipPoints > 0 || progress.romancePoints > 0) return true
+  if (progress.romanceUnlocked || progress.livingAtHome) return true
+  if (Object.keys(progress.giftDiscoveries).length > 0) return true
+  if (progress.seenDialogueIds.length > 0) return true
+  if (progress.unlockedEventIds.length > 0) return true
+  return false
 }
 
 function reconcileGiftDiscoveries(
@@ -144,6 +155,7 @@ function mergeNpcProgress(
     }
     defaults[def.id] = {
       ...merged,
+      interacted: inferInteracted(merged),
       unlockedEventIds: [
         ...new Set([
           ...merged.unlockedEventIds,
@@ -606,11 +618,13 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           kind: 'todo',
           title: task.title,
         },
-        taskReaction: {
-          id: uid(),
-          taskId: task.id,
-          ...reaction,
-        },
+        taskReaction: reaction
+          ? {
+              id: uid(),
+              taskId: task.id,
+              ...reaction,
+            }
+          : null,
         valleyRewardReady: true,
         onboardingStep: s.onboardingStep === 2 ? 3 : s.onboardingStep,
         toast: null,
@@ -980,7 +994,9 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           progressBefore: before,
           progressAfter: after,
         },
-        taskReaction: { id: uid(), taskId: block.id, ...reaction },
+        taskReaction: reaction
+          ? { id: uid(), taskId: block.id, ...reaction }
+          : null,
         valleyRewardReady: true,
       })
     }),
@@ -1256,6 +1272,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s.npc,
         [npcId]: {
           ...p,
+          interacted: true,
           romanceUnlocked: true,
           romancePoints: Math.max(p.romancePoints, 30),
           interactionsToday: p.interactionsToday + 1,
@@ -1301,6 +1318,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s.npc,
         [npcId]: {
           ...p,
+          interacted: true,
           friendshipPoints: p.friendshipPoints + friendship,
           romancePoints: p.romancePoints + romance,
           interactionsToday: p.interactionsToday + 1,
@@ -1482,6 +1500,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           [npcId]: {
             ...progress,
             met: true,
+            interacted: true,
             friendshipPoints: Math.max(0, Math.floor(friendship)),
             romancePoints: Math.max(0, Math.floor(romance)),
             romanceUnlocked: progress.romanceUnlocked || romance > 0,
@@ -1512,6 +1531,7 @@ function interact(
     ...s.npc,
     [npcId]: {
       ...p,
+      interacted: true,
       friendshipPoints: p.friendshipPoints + gain.friendship,
       romancePoints: p.romancePoints + romanceGain,
       interactionsToday: p.interactionsToday + 1,

@@ -2,7 +2,7 @@ import type { GameState } from './types'
 
 const KEY = 'productivity-valley-v1'
 const BACKUP_KEY = 'productivity-valley-backup-v1'
-const CURRENT_SCHEMA_VERSION = 16
+const CURRENT_SCHEMA_VERSION = 17
 
 type PersistedState = Omit<
   GameState,
@@ -122,6 +122,7 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
       typeof npc.romanceUnlocked === 'boolean' &&
       typeof npc.livingAtHome === 'boolean' &&
       typeof npc.met === 'boolean' &&
+      (npc.interacted === undefined || typeof npc.interacted === 'boolean') &&
       isFiniteNumber(npc.interactionsToday) &&
       (npc.giftDiscoveries === undefined ||
         (isRecord(npc.giftDiscoveries) &&

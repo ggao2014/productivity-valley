@@ -61,7 +61,31 @@ describe('task rewards', () => {
     expect(state.tasks[0].awardedCoins).toBe(50)
     expect(state.tasks[0].awardedBond).toBe(1)
     expect(state.rewardFeedback).toMatchObject({ coins: 50, bond: 1 })
-    expect(state.taskReaction).toMatchObject({
+    expect(state.taskReaction).toBeNull()
+  })
+
+  it('shows a completion reaction only after chatting with someone', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 40,
+        bond: 9,
+        npc: {
+          ...gameState().npc,
+          shendu: npcProgress({ met: true, interacted: true }),
+        },
+        tasks: [
+          {
+            id: 'task-1',
+            title: '重要',
+            difficulty: 'large',
+            done: false,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }),
+    )
+    useGameStore.getState().completeTask('task-1')
+    expect(useGameStore.getState().taskReaction).toMatchObject({
       taskId: 'task-1',
       npcId: 'shendu',
     })

@@ -1436,13 +1436,13 @@ const COMPLETION_REACTIONS: Record<
 export function completionReactionFor(
   state: GameState,
   task: Task,
-): { npcId: string; text: string } {
+): { npcId: string; text: string } | null {
   const available = Object.keys(COMPLETION_REACTIONS).filter(
-    (npcId) => state.npc[npcId]?.met,
+    (npcId) => state.npc[npcId]?.interacted,
   )
-  const fallback = available.length > 0 ? available : ['shendu']
+  if (available.length === 0) return null
   const completedCount = state.tasks.filter((item) => item.done).length
-  const npcId = fallback[completedCount % fallback.length]
+  const npcId = available[completedCount % available.length]
   const lines = COMPLETION_REACTIONS[npcId][task.difficulty]
   return { npcId, text: lines[completedCount % lines.length] }
 }

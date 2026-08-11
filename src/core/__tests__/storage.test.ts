@@ -30,7 +30,7 @@ describe('versioned saves', () => {
       }),
     )
     const parsed = JSON.parse(raw)
-    expect(parsed.schemaVersion).toBe(16)
+    expect(parsed.schemaVersion).toBe(17)
     expect(parsed.state.toast).toBeUndefined()
     expect(parsed.state.selectedNpcId).toBeUndefined()
     expect(parsed.state.selectedRoomId).toBeUndefined()
