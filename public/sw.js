@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'productivity-valley-'
-const CACHE = `${CACHE_PREFIX}v0.9.0`
+const CACHE = `${CACHE_PREFIX}v0.9.1`
 const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './pwa-192.png']
 const MAX_CACHE_ENTRIES = 120
 
@@ -11,6 +11,23 @@ async function remember(request, response) {
   if (excess > 0) {
     await Promise.all(keys.slice(0, excess).map((key) => cache.delete(key)))
   }
+}
+
+function networkFirst(request, fallbackUrl) {
+  return fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        const copy = response.clone()
+        void remember(request, copy)
+      }
+      return response
+    })
+    .catch(async () => {
+      const cached = await caches.match(request)
+      if (cached) return cached
+      if (fallbackUrl) return caches.match(fallbackUrl)
+      return Response.error()
+    })
 }
 
 self.addEventListener('install', (event) => {
@@ -43,18 +60,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return
 
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone()
-          void remember('./', copy)
-          return response
-        })
-        .catch(() => caches.match('./')),
-    )
+    event.respondWith(networkFirst(request, './'))
     return
   }
 
+  // Art stays cache-first; app shell/scripts must prefer network so deploys land.
   if (url.pathname.includes('/art/')) {
     event.respondWith(
       caches.match(request).then(
@@ -72,16 +82,5 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone()
-          void remember(request, copy)
-        }
-        return response
-      })
-      return cached ?? network
-    }),
-  )
+  event.respondWith(networkFirst(request))
 })

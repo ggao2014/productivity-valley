@@ -37,16 +37,23 @@ export function PwaStatus() {
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     window.addEventListener('beforeinstallprompt', onInstall)
+
+    let cancelled = false
+    let updateTimer = 0
+    const cleanups: Array<() => void> = []
+
     if ('serviceWorker' in navigator && import.meta.env.PROD) {
       void navigator.serviceWorker
         .register(`${import.meta.env.BASE_URL}sw.js`)
         .then((registered) => {
+          if (cancelled) return
           setRegistration(registered)
           if (
             !navigator.serviceWorker.controller &&
             !sessionStorage.getItem('productivity-valley-offline-ready-seen')
           ) {
             void navigator.serviceWorker.ready.then(() => {
+              if (cancelled) return
               sessionStorage.setItem(
                 'productivity-valley-offline-ready-seen',
                 '1',
@@ -55,7 +62,7 @@ export function PwaStatus() {
             })
           }
           if (registered.waiting) setNeedRefresh(true)
-          registered.addEventListener('updatefound', () => {
+          const onUpdateFound = () => {
             const worker = registered.installing
             worker?.addEventListener('statechange', () => {
               if (
@@ -65,14 +72,41 @@ export function PwaStatus() {
                 setNeedRefresh(true)
               }
             })
+          }
+          registered.addEventListener('updatefound', onUpdateFound)
+          cleanups.push(() =>
+            registered.removeEventListener('updatefound', onUpdateFound),
+          )
+
+          const checkUpdate = () => {
+            void registered.update().catch(() => {
+              if (!cancelled) setWorkerError(true)
+            })
+          }
+          checkUpdate()
+          const onVisible = () => {
+            if (document.visibilityState === 'visible') checkUpdate()
+          }
+          document.addEventListener('visibilitychange', onVisible)
+          window.addEventListener('pageshow', checkUpdate)
+          updateTimer = window.setInterval(checkUpdate, 60_000)
+          cleanups.push(() => {
+            document.removeEventListener('visibilitychange', onVisible)
+            window.removeEventListener('pageshow', checkUpdate)
+            window.clearInterval(updateTimer)
           })
         })
-        .catch(() => setWorkerError(true))
+        .catch(() => {
+          if (!cancelled) setWorkerError(true)
+        })
     }
+
     return () => {
+      cancelled = true
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
       window.removeEventListener('beforeinstallprompt', onInstall)
+      for (const cleanup of cleanups) cleanup()
     }
   }, [])
 
