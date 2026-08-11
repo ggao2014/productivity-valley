@@ -1384,7 +1384,7 @@ const COMPLETION_REACTIONS: Record<
   guwan: {
     small: ['收工。合格。', '划掉。没问题。'],
     medium: ['干得不错。过。', '结果对了。'],
-    large: ['难也做成了。', '佩服。收工。'],
+    large: ['佩服。', '收工。漂亮。'],
   },
   jiangxiaoman: {
     small: ['收工啦！', '利落！过关！'],
@@ -1394,12 +1394,12 @@ const COMPLETION_REACTIONS: Record<
   chenshi: {
     small: ['收工喽！结了！', '划掉！成了！'],
     medium: ['干得漂亮！', '这笔成了！'],
-    large: ['这么大也成了！', '真有你的！'],
+    large: ['真有你的！', '漂亮！结了！'],
   },
   linchu: {
     small: ['收工咯。', '划掉。过。'],
     medium: ['干得牢。', '收得干净。'],
-    large: ['这么难也成了。', '成了。歇吧。'],
+    large: ['成了。歇吧。', '收得住。好。'],
   },
   baizhi: {
     small: ['收工啦？', '划掉！亮了！'],
@@ -1414,7 +1414,7 @@ const COMPLETION_REACTIONS: Record<
   yueqingshan: {
     small: ['收工。过。', '划掉。准。'],
     medium: ['目标达成。', '应变过关。'],
-    large: ['重活也成了！', '完成。庆祝！'],
+    large: ['干得漂亮！', '完成。庆祝！'],
   },
   wenjiu: {
     small: ['收工。记了。', '划掉。齐。'],
