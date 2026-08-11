@@ -61,7 +61,31 @@ describe('task rewards', () => {
     expect(state.tasks[0].awardedCoins).toBe(50)
     expect(state.tasks[0].awardedBond).toBe(1)
     expect(state.rewardFeedback).toMatchObject({ coins: 50, bond: 1 })
-    expect(state.taskReaction).toMatchObject({
+    expect(state.taskReaction).toBeNull()
+  })
+
+  it('shows a completion reaction only after chatting with someone', () => {
+    useGameStore.setState(
+      gameState({
+        coins: 40,
+        bond: 9,
+        npc: {
+          ...gameState().npc,
+          shendu: npcProgress({ met: true, interacted: true }),
+        },
+        tasks: [
+          {
+            id: 'task-1',
+            title: '重要',
+            difficulty: 'large',
+            done: false,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }),
+    )
+    useGameStore.getState().completeTask('task-1')
+    expect(useGameStore.getState().taskReaction).toMatchObject({
       taskId: 'task-1',
       npcId: 'shendu',
     })
@@ -103,6 +127,25 @@ describe('task rewards', () => {
 })
 
 describe('daily interaction cap', () => {
+  it('plays the first-meet line on the first chat, then normal chat lines', () => {
+    useGameStore.setState(
+      gameState({
+        bond: 10,
+        npc: { shendu: npcProgress({ met: true, interacted: false }) },
+      }),
+    )
+    useGameStore.getState().chat('shendu')
+    expect(useGameStore.getState().dialogue).toMatchObject({
+      kind: 'meet',
+      text: '……嗯。你是新来的。',
+    })
+    expect(useGameStore.getState().npc.shendu.interacted).toBe(true)
+
+    useGameStore.getState().clearDialogue()
+    useGameStore.getState().chat('shendu')
+    expect(useGameStore.getState().dialogue?.kind).toBe('chat')
+  })
+
   it('allows three chats and rejects the fourth without charging energy', () => {
     useGameStore.setState(
       gameState({
@@ -129,6 +172,7 @@ describe('gift preference discovery', () => {
         inventory: [{ id: 'ginger_soup', qty: 1 }],
         npc: {
           shendu: npcProgress({
+            interacted: true,
             romanceUnlocked: true,
             romancePoints: 30,
           }),
@@ -149,6 +193,7 @@ describe('gift preference discovery', () => {
         inventory: [{ id: 'trinket', qty: 1 }],
         npc: {
           shendu: npcProgress({
+            interacted: true,
             romanceUnlocked: true,
             romancePoints: 30,
           }),

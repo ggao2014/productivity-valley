@@ -25,6 +25,22 @@ export interface DialogueEntry {
 
 type CharacterDialogue = Partial<Record<DialogueKind, DialogueEntry[]>>
 
+/** First-interaction lines; shown once when `interacted` flips to true. */
+const FIRST_MEET: Record<string, DialogueEntry> = {
+  shendu: { text: '……嗯。你是新来的。', tone: 'neutral' },
+  qinghe: { text: '嘿！新面孔？过来过来！', tone: 'warm' },
+  guwan: { text: '你？行，记住了。', tone: 'annoyed' },
+  jiangxiaoman: { text: '哟，新邻居！饿不饿？', tone: 'warm' },
+  chenshi: { text: '新客啊？先瞧瞧货也行。', tone: 'warm' },
+  taotao: { text: '嗨！糖画要不要看一眼？', tone: 'warm' },
+  linchu: { text: '……你好。', tone: 'shy' },
+  baizhi: { text: '你好呀。我是白芷。', tone: 'warm' },
+  suweiming: { text: '有缘见面。', tone: 'neutral' },
+  yueqingshan: { text: '报到了？认识一下。', tone: 'neutral' },
+  wenjiu: { text: '登记一下。你叫什么？', tone: 'neutral' },
+  hedeng: { text: '新朋友！嘻嘻', tone: 'warm' },
+}
+
 const CORE_DIALOGUE: Record<string, CharacterDialogue> = {
   shendu: {
     chat: [
@@ -1271,10 +1287,15 @@ export function dialogueEntriesFor(
   npcId: string,
   kind: DialogueKind,
 ): readonly DialogueEntry[] {
+  if (kind === 'meet') {
+    const entry = FIRST_MEET[npcId]
+    return entry ? [entry] : []
+  }
   return CORE_DIALOGUE[npcId]?.[kind] ?? []
 }
 
 const GENERIC_DIALOGUE: Record<DialogueKind, DialogueEntry> = {
+  meet: { text: '你们打了个招呼。', tone: 'neutral' },
   chat: { text: '你们聊了聊今天各自做的事。', tone: 'neutral' },
   heart: { text: '你们说了一些平时不会提的事。', tone: 'warm' },
   romance: { text: '对方听完后答应了。', tone: 'shy' },
@@ -1320,6 +1341,16 @@ export function dialogueFor(
   index = 0,
   now = new Date(),
 ): DialogueState {
+  if (kind === 'meet') {
+    const entry = FIRST_MEET[npcId] ?? GENERIC_DIALOGUE.meet
+    return {
+      entryId: `${npcId}-meet-0`,
+      npcId,
+      kind,
+      text: entry.text,
+      tone: entry.tone,
+    }
+  }
   const entries = CORE_DIALOGUE[npcId]?.[kind]
   if (!entries?.length) {
     return {
@@ -1372,77 +1403,77 @@ const COMPLETION_REACTIONS: Record<
   Record<Difficulty, readonly string[]>
 > = {
   shendu: {
-    small: ['做完了。嗯，没留尾巴。', '行。划掉，别站着反复看。'],
-    medium: ['这件不轻。你没翻船，算夸你。', '办得好。我想挑毛病，没找到。'],
-    large: ['真做完了？……厉害。只说一次。', '这么大一件都扛过来。今晚你可以不逞强。'],
+    small: ['收工。', '划掉。行。'],
+    medium: ['干得不错。', '嗯，过了。'],
+    large: ['真做完了。', '扛过来了。歇。'],
   },
   qinghe: {
-    small: ['好！划掉，下一件——等等，先喘口气。', '这么快？行啊，手脚赶上我了。'],
-    medium: ['这都让你做完了？来，击个掌！', '前后都接上了。谁说你不行，我去跟他吵。'],
-    large: ['我的天，真成了！今晚谁都不许只吃冷饭！', '这么大一块硬地都让你啃下来了。走，庆祝去！'],
+    small: ['收工喽！', '划掉！漂亮！'],
+    medium: ['干得漂亮！', '成了！击掌！'],
+    large: ['太猛了！', '成了！庆祝！'],
   },
   guwan: {
-    small: ['完成。找不到可挑的地方，暂时。', '结果没问题。别等“但是”，没有。'],
-    medium: ['路线绕了点，终点是对的。算你赢。', '做得很好。需要我重复？不需要。'],
-    large: ['我原本觉得你会卡住。很好，你可以笑我看错。', '这么难也做成了。佩服——别让我说第三遍。'],
+    small: ['收工。合格。', '划掉。没问题。'],
+    medium: ['干得不错。过。', '结果对了。'],
+    large: ['佩服。', '收工。漂亮。'],
   },
   jiangxiaoman: {
-    small: ['做完啦？好！想吃什么，快点菜！', '利落！这一件没夹生，可以上桌。'],
-    medium: ['好家伙，这一锅真让你端稳了！', '做得漂亮！先别开下一件，来吃口热的。'],
-    large: ['全做完了？今晚加菜！谁拦我跟谁急！', '这么大一摊都收住了！坐下，我现在就给你煮面。'],
+    small: ['收工啦！', '利落！过关！'],
+    medium: ['干得香！', '漂亮！先歇！'],
+    large: ['全做完！加菜！', '成了！坐下！'],
   },
   chenshi: {
-    small: ['办妥了？漂亮！这效率拿去摆摊能多卖两轮。', '结了结了。要我替你吆喝一声吗？免费。'],
-    medium: ['这门道都让你摸清了。要不我拜你学两天？', '办得漂亮。我夸人平时收费，今天免了。'],
-    large: ['这么大一桩都成了！说吧，想听我夸几句？我能夸一刻钟。', '真有你的。这个结果要能寄卖，价钱我不敢乱开。'],
+    small: ['收工喽！结了！', '划掉！成了！'],
+    medium: ['干得漂亮！', '这笔成了！'],
+    large: ['真有你的！', '漂亮！结了！'],
   },
   linchu: {
-    small: ['完成了。我检查过。不是不信你，是……习惯。', '收尾很好。这里不用返工。真的不用。'],
-    medium: ['步骤都合上了。像严丝合缝的榫——这是夸奖。', '做得牢。我看了两遍，没有第三遍的必要。'],
-    large: ['这么复杂也完成了。我不知道怎么夸得更大声。厉害。', '结果经得住看。你也经得住。现在可以休息。'],
+    small: ['收工咯。', '划掉。过。'],
+    medium: ['干得牢。', '收得干净。'],
+    large: ['成了。歇吧。', '收得住。好。'],
   },
   baizhi: {
-    small: ['做完了？让我看看——不是怀疑，我只是想看。', '完成时你眼睛会亮一点。刚才真的亮了。'],
-    medium: ['过程这么复杂，你居然没把自己绕丢。很有趣，也很厉害。', '每一步都接上了！我想把过程记下来，可以吗？'],
-    large: ['真的完成了！你现在心跳是不是很快？我也是。', '这么难也做成了。先坐，我不是看病，只是你脸都红了。'],
+    small: ['收工啦？', '划掉！亮了！'],
+    medium: ['干得不错呀！', '成了！厉害！'],
+    large: ['真做完了！', '好厉害！'],
   },
   suweiming: {
-    small: ['此事至此，圆满收笔。翻成白话：做得好。', '结尾漂亮。放心，我不替你加后记。'],
-    medium: ['峰回路转，终——好，我短点说：厉害。', '这段过程值得写三页。你若累了，我先只夸一句。'],
-    large: ['如此大事终成，理当作赋——你别走！我只说：真了不起。', '这一页该用大字写“完成”。名字写你的，我只负责磨墨。'],
+    small: ['收工喽。', '划掉。好。'],
+    medium: ['这段成了。', '收笔。漂亮。'],
+    large: ['真做成了。', '写上：成了。'],
   },
   yueqingshan: {
-    small: ['报告：完成。评价：很好。解散。', '此项结束。允许你现在得意一会儿。'],
-    medium: ['中途有变，仍然完成。应变优秀。', '计划调整三次，目标达成。值得表扬——这是正式表扬。'],
-    large: ['重大任务完成。我要向你行礼。别躲，这是认真的。', '困难很多，你守住了。今日训练取消，改为庆祝。'],
+    small: ['收工。过。', '划掉。准。'],
+    medium: ['目标达成。', '应变过关。'],
+    large: ['干得漂亮！', '完成。庆祝！'],
   },
   wenjiu: {
-    small: ['已完成。时间记下了——别紧张，只记完成。', '这一项关账。没有遗漏，我难得很满意。'],
-    medium: ['前后都齐。你若再回头检查，我会认为你在抢我的活。', '过程变了四次，仍然收尾。记录很好看。人也做得好。'],
-    large: ['全部完成。我核过两遍。现在轮到你相信自己。', '这么多环节都收住了。庆祝可不登记，但请提前说人数。'],
+    small: ['收工。记了。', '划掉。齐。'],
+    medium: ['关账。漂亮。', '前后都齐。'],
+    large: ['全做完了。', '核过。成了。'],
   },
   hedeng: {
-    small: ['做完啦！嘻嘻', '完成！快划掉快划掉'],
-    medium: ['这么绕也走完了！厉害！', '做得好！今晚给你点盏歪头鹅'],
-    large: ['真的全做完了？走，放风筝去！', '哇——这么长都走完了！'],
+    small: ['收工喽！嘻嘻', '划掉！快划！'],
+    medium: ['成了！耶！', '厉害！嘻嘻'],
+    large: ['全做完！走！', '哇——成了！'],
   },
   taotao: {
-    small: ['做完了？行，速度快赶上我收摊。', '利落！这一件划掉的样子真好看。'],
-    medium: ['这都做成了？不错嘛，今天算你赢。', '忙这么久总算有结果。来，失败糖画随便挑一个。'],
-    large: ['真让你办成了！今晚加菜，我出三根糖签。', '厉害！不许谦虚，我最烦赢了还说运气的人。'],
+    small: ['收工喽！', '划掉！利落！'],
+    medium: ['干得不错嘛！', '成了！不错！'],
+    large: ['真办成了！', '厉害！加菜！'],
   },
 }
 
 export function completionReactionFor(
   state: GameState,
   task: Task,
-): { npcId: string; text: string } {
+): { npcId: string; text: string } | null {
   const available = Object.keys(COMPLETION_REACTIONS).filter(
-    (npcId) => state.npc[npcId]?.met,
+    (npcId) => state.npc[npcId]?.interacted,
   )
-  const fallback = available.length > 0 ? available : ['shendu']
+  if (available.length === 0) return null
   const completedCount = state.tasks.filter((item) => item.done).length
-  const npcId = fallback[completedCount % fallback.length]
+  const npcId = available[completedCount % available.length]
   const lines = COMPLETION_REACTIONS[npcId][task.difficulty]
   return { npcId, text: lines[completedCount % lines.length] }
 }

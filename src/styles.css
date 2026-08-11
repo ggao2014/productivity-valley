@@ -390,6 +390,20 @@ button {
   filter: brightness(0) opacity(.64);
 }
 
+.townsfolk-entry.is-shadow-open {
+  cursor: pointer;
+  opacity: .88;
+}
+
+.townsfolk-entry.is-shadow-open:not(:disabled):hover,
+.townsfolk-entry.is-shadow-open:not(:disabled):focus-visible {
+  opacity: 1;
+}
+
+.townsfolk-unknown {
+  min-height: 1.1em;
+}
+
 .townsfolk-entry-copy { min-width: 0; display: grid; gap: 6px; }
 .townsfolk-entry-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .townsfolk-entry-copy small { display: flex; align-items: center; gap: 8px; color: #756750; }
@@ -1781,6 +1795,11 @@ button {
   gap: 4px;
   color: var(--ink);
   transform: translate(-50%, -50%);
+}
+
+.npc-spot.is-silhouette .npc-sprite,
+.npc-spot.is-silhouette .npc-sprite-stack .npc-sprite {
+  filter: brightness(0) opacity(0.72);
 }
 
 .npc-chip {
@@ -4311,11 +4330,6 @@ button {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.05rem;
-  color: var(--moss-deep);
-}
-.timeline-slot-done {
-  margin: 8px 0 0;
-  font-size: 0.78rem;
   color: var(--moss-deep);
 }
 .timeline-foot { margin: 0 0 10px; }

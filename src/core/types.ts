@@ -15,6 +15,7 @@ export type BedroomSection = 'main' | 'leftWing' | 'rightWing'
 export type FriendshipStage = 0 | 1 | 2 | 3
 export type RomanceStage = 0 | 1 | 2 | 3 | 4
 export type DialogueKind =
+  | 'meet'
   | 'chat'
   | 'heart'
   | 'romance'
@@ -158,6 +159,8 @@ export interface NpcProgress {
   romanceUnlocked: boolean
   livingAtHome: boolean
   met: boolean
+  /** True after the first real interaction (chat / gift / etc.). */
+  interacted: boolean
   interactionsToday: number
   giftDiscoveries: Record<string, GiftReaction>
   seenDialogueIds: string[]

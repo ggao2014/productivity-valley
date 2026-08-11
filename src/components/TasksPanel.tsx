@@ -193,7 +193,6 @@ function TodayView({
       <div className="day-timeline" aria-label="今日时间轴">
         {PLAN_SLOTS.map((slot) => {
           const items = grouped[slot]
-          const openInSlot = items.filter((item) => !item.done).length
           const doneInSlot = items.filter((item) => item.done).length
           return (
             <section key={slot} className={`timeline-slot slot-${slot}`}>
@@ -229,9 +228,6 @@ function TodayView({
                   />
                 ))}
               </div>
-              {openInSlot === 0 && doneInSlot > 0 && (
-                <p className="timeline-slot-done">这格做完啦</p>
-              )}
             </section>
           )
         })}

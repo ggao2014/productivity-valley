@@ -346,21 +346,22 @@ export function ValleyPanel({
           })}
         </div>
         {scenePeople.map(({ npc: n, activity }) => {
+          const known = Boolean(npc[n.id]?.interacted)
           return (
             <button
               key={n.id}
-              className={`npc-spot activity-${n.id}${activity.zone === 'courtyard' ? ' is-courtyard-person' : ''}${onboardingStep === 3 ? ' guide-target' : ''}`}
+              className={`npc-spot activity-${n.id}${activity.zone === 'courtyard' ? ' is-courtyard-person' : ''}${known ? '' : ' is-silhouette'}${onboardingStep === 3 ? ' guide-target' : ''}`}
               style={{ left: activity.left, top: activity.top }}
               onClick={() => selectNpc(n.id)}
-              aria-label={`${n.name} · ${activity.label}`}
-              title={`${n.name} · ${activity.label}`}
+              aria-label={known ? `${n.name} · ${activity.label}` : '陌生的镇民'}
+              title={known ? `${n.name} · ${activity.label}` : '陌生的镇民'}
             >
               <CharacterVisual
                 n={n}
                 spriteState={n.id === movingInNpcId ? 'moveIn' : 'walkAway'}
                 animateWalking
               />
-              <small>{n.name}</small>
+              {known && <small>{n.name}</small>}
             </button>
           )
         })}
@@ -497,13 +498,20 @@ export function NpcSheet() {
             </div>
           )}
           <div className="npc-sheet-copy">
-            <h2>{def.name}</h2>
-            <p className="muted">{def.blurb}</p>
+            <h2>{npcState.interacted || activeDialogue ? def.name : '？'}</h2>
+            <p className="muted">
+              {npcState.interacted
+                ? def.blurb
+                : activeDialogue
+                  ? '刚打过招呼'
+                  : '还没聊过，先打个招呼吧'}
+            </p>
             {npcState.livingAtHome && (
               <span className="npc-home-mark" title="已入住" aria-label="已入住">
                 <GameIcon name="home" />
               </span>
             )}
+            {npcState.interacted ? (
             <div className="relationship-bars" aria-label="关系进度">
               <div>
                 <span title={`友情：${FRIENDSHIP_LABELS[f]}`} aria-label={`友情：${FRIENDSHIP_LABELS[f]}`}><GameIcon name="chat" />友情</span>
@@ -523,10 +531,13 @@ export function NpcSheet() {
               )}
               <em title="今日互动" aria-label={`今日互动 ${npcState.interactionsToday}/3`}><GameIcon name="spark" />今日 {npcState.interactionsToday}/3</em>
             </div>
+            ) : (
+              <p className="muted npc-sheet-locked-hint">互动后才能查看详情</p>
+            )}
           </div>
         </div>}
 
-        {profilePage === 1 ? (
+        {profilePage === 1 && npcState.interacted ? (
           <div className="journal-story-page">
             <section className="preference-journal journal-page-preferences" aria-labelledby="preference-title">
               <div className="preference-heading">
@@ -710,7 +721,7 @@ export function NpcSheet() {
           </>
         )}
 
-        {relationshipEvents.length > 0 && !activeDialogue && (
+        {npcState.interacted && relationshipEvents.length > 0 && !activeDialogue && (
           <nav className="journal-page-nav" aria-label="人物手记分页">
             {profilePage === 1 && (
               <button

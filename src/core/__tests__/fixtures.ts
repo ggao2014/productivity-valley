@@ -10,6 +10,7 @@ export function npcProgress(
     romanceUnlocked: false,
     livingAtHome: false,
     met: true,
+    interacted: false,
     interactionsToday: 0,
     giftDiscoveries: {},
     seenDialogueIds: [],
