@@ -61,6 +61,7 @@ import {
   habitWeeklyProgress,
   mondayKey,
   nextBlockReward,
+  nextOpenBlock,
   PROJECT_REWARDS,
   projectProgress,
 } from './productivity'
@@ -337,7 +338,7 @@ interface Actions {
   addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
   adjustHabit: (id: string, delta: number) => void
   archiveHabit: (id: string) => void
-  addProject: (title: string, size: ProjectSize, dueDate?: string, category?: TaskCategory) => void
+  addProject: (title: string, size: ProjectSize, dueDate?: string, category?: TaskCategory) => string | undefined
   updateProject: (id: string, title: string, dueDate?: string) => void
   addProjectBlock: (projectId: string, title: string, difficulty: Difficulty) => void
   deleteProjectBlock: (projectId: string, blockId: string) => void
@@ -809,13 +810,14 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
   addProject: (title, size, dueDate, category = 'errand') => {
     const clean = title.trim()
     if (!clean) return
+    const id = uid()
     set((s) =>
       persist({
         ...s,
         projects: [
           ...s.projects,
           {
-            id: uid(),
+            id,
             title: clean,
             size,
             status: 'draft' as const,
@@ -828,6 +830,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ],
       }),
     )
+    return id
   },
 
   updateProject: (id, title, dueDate) => {
@@ -914,6 +917,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       }
       return persist({
         ...s,
+        toast: null,
         projects: s.projects.map((item) =>
           item.id === id ? { ...item, status: 'active' } : item,
         ),
@@ -924,7 +928,11 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     set((s) => {
       const project = s.projects.find((item) => item.id === projectId)
       const block = project?.blocks.find((item) => item.id === blockId)
+      const nextOpen = project ? nextOpenBlock(project) : undefined
       if (!project || !block || project.status !== 'active' || block.done) return s
+      if (nextOpen?.id !== blockId) {
+        return { ...s, toast: '先做上一步' }
+      }
       const before = projectProgress(project).percent
       const baseReward = nextBlockReward(project, blockId)
       const config = PROJECT_REWARDS[project.size]
@@ -998,6 +1006,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           ? { id: uid(), taskId: block.id, ...reaction }
           : null,
         valleyRewardReady: true,
+        toast: null,
       })
     }),
 

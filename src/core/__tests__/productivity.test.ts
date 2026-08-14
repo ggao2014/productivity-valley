@@ -7,6 +7,7 @@ import {
   habitWeeklyProgress,
   nextBlockReward,
   projectProgress,
+  nextOpenBlock,
 } from '../productivity'
 import type { Habit, Project } from '../types'
 import { gameState, memoryStorage } from './fixtures'
@@ -109,5 +110,25 @@ describe('project budgets', () => {
     expect(state.coins - coinsBefore).toBe(PROJECT_REWARDS.small.coins)
     expect(state.projects[0].status).toBe('completed')
     expect(state.projects[0].awardedMilestones).toEqual([25, 50, 75, 100])
+  })
+
+  it('starts only after the size minimum and completes blocks in order', () => {
+    const id = useGameStore.getState().addProject('ship feature', 'small')
+    expect(id).toBeTruthy()
+    useGameStore.getState().startProject(id!)
+    expect(useGameStore.getState().toast).toBe('至少需要 2 个分块')
+    expect(useGameStore.getState().projects[0].status).toBe('draft')
+
+    useGameStore.getState().addProjectBlock(id!, 'design', 'small')
+    useGameStore.getState().addProjectBlock(id!, 'build', 'small')
+    useGameStore.getState().startProject(id!)
+    const [first, second] = useGameStore.getState().projects[0].blocks
+    useGameStore.getState().completeProjectBlock(id!, second.id)
+    expect(useGameStore.getState().toast).toBe('先做上一步')
+    expect(useGameStore.getState().projects[0].blocks[1].done).toBe(false)
+
+    useGameStore.getState().completeProjectBlock(id!, first.id)
+    expect(useGameStore.getState().projects[0].blocks[0].done).toBe(true)
+    expect(nextOpenBlock(useGameStore.getState().projects[0])?.id).toBe(second.id)
   })
 })
