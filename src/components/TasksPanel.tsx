@@ -12,6 +12,7 @@ import {
   habitEntryFor,
   habitWeeklyProgress,
   nextBlockReward,
+  nextOpenBlock,
   projectProgress,
 } from '../core/productivity'
 import {
@@ -27,7 +28,6 @@ import type {
   HabitScheduleType,
   PlanSlot,
   PlanTarget,
-  Project,
   ProjectSize,
   TaskCategory,
 } from '../core/types'
@@ -52,7 +52,7 @@ const PROJECT_SIZE_LABELS: Record<ProjectSize, string> = {
 }
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = {
-  small: '小任务',
+  small: '小块',
   medium: '中块',
   large: '大块',
 }
@@ -84,8 +84,16 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
       ).length,
     0,
   )
+  const openProjectSteps = activeProjects.filter((project) =>
+    project.blocks.some((block) => !block.done),
+  ).length
+  const projectTodayTotal = blocksDoneToday + openProjectSteps
   const todayCompleted = taskToday.completed + habitDoneToday + blocksDoneToday
-  const todayTotal = dueHabits.length + activeProjects.length + tasks.filter((task) => !task.done).length + taskToday.completed
+  const todayTotal =
+    dueHabits.length +
+    projectTodayTotal +
+    tasks.filter((task) => !task.done).length +
+    taskToday.completed
 
   return (
     <div className="panel productivity-panel">
@@ -107,7 +115,7 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
           <div className="today-summary-total"><span>今天</span><strong>{todayCompleted}/{Math.max(todayCompleted, todayTotal)}</strong></div>
           <div className="today-summary-items">
             <span>习惯 <b>{habitDoneToday}/{dueHabits.length}</b></span>
-            <span>项目 <b>{blocksDoneToday}/{activeProjects.length}</b></span>
+            <span>项目 <b>{blocksDoneToday}/{projectTodayTotal}</b></span>
             <span>待办 <b>{taskToday.completed}/{tasks.filter((task) => !task.done).length + taskToday.completed}</b></span>
           </div>
           <small>{activeDayStreak(tasks)} 天活跃</small>
@@ -573,60 +581,174 @@ function ProjectsView() {
   const completeProjectBlock = useGameStore((s) => s.completeProjectBlock)
   const undoProjectBlock = useGameStore((s) => s.undoProjectBlock)
   const archiveProject = useGameStore((s) => s.archiveProject)
-  const visible = projects.filter((project) => project.status !== 'archived')
-  const [selectedId, setSelectedId] = useState<string | null>(visible[0]?.id ?? null)
-  const selected = visible.find((project) => project.id === selectedId) ?? visible[0]
+  const current = projects.filter(
+    (project) => project.status === 'draft' || project.status === 'active',
+  )
+  const completed = projects.filter((project) => project.status === 'completed')
+  const [selectedId, setSelectedId] = useState<string | null>(current[0]?.id ?? null)
+  const selected =
+    current.find((project) => project.id === selectedId) ??
+    completed.find((project) => project.id === selectedId) ??
+    current[0]
+  const [composing, setComposing] = useState(current.length === 0 && completed.length === 0)
   const [title, setTitle] = useState('')
   const [size, setSize] = useState<ProjectSize>('small')
   const [dueDate, setDueDate] = useState('')
   const [category, setCategory] = useState<TaskCategory>('errand')
   const [blockTitle, setBlockTitle] = useState('')
   const [blockDifficulty, setBlockDifficulty] = useState<Difficulty>('small')
-  const reward = useMemo(() => selected ? PROJECT_REWARDS[selected.size] : null, [selected])
+  const reward = selected ? PROJECT_REWARDS[selected.size] : null
+  const nextBlock = selected ? nextOpenBlock(selected) : undefined
+  const remainingBlocks = reward && selected
+    ? Math.max(0, reward.minBlocks - selected.blocks.length)
+    : 0
+  const todayKey = localDayKey()
 
   return (
     <>
-      <SectionHeading title="项目" detail="拆成分块完成，阶段进度会发放额外奖励" />
-      <form className="productivity-form compact-form" onSubmit={(event) => {
-        event.preventDefault()
-        if (!title.trim()) return
-        addProject(title, size, dueDate || undefined, category)
-        setTitle('')
-      }}>
-        <label>项目名称<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：整理作品集" /></label>
-        <CategoryPicker value={category} onChange={setCategory} />
-        <div className="form-grid">
-          <label>规模<select value={size} onChange={(event) => setSize(event.target.value as ProjectSize)}><option value="small">小项目 · 120 金币</option><option value="medium">中项目 · 300 金币</option><option value="large">大项目 · 600 金币</option></select></label>
-          <label>截止日期（可选）<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
-        </div>
-        <button className="btn" type="submit"><GameIcon name="plus" />新建项目</button>
-      </form>
+      <SectionHeading title="项目" detail="先拆成几步，再按顺序做。做到 25%/50%/75%/100% 会额外发奖。" />
+      {composing ? (
+        <form className="productivity-form compact-form" onSubmit={(event) => {
+          event.preventDefault()
+          if (!title.trim()) return
+          const id = addProject(title, size, dueDate || undefined, category)
+          setTitle('')
+          setDueDate('')
+          setComposing(false)
+          if (id) setSelectedId(id)
+        }}>
+          <label>项目名称<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：整理作品集" /></label>
+          <CategoryPicker value={category} onChange={setCategory} />
+          <div className="form-grid">
+            <label>规模<select value={size} onChange={(event) => setSize(event.target.value as ProjectSize)}>
+              <option value="small">小项目 · 120 金币 · 至少 2 步</option>
+              <option value="medium">中项目 · 300 金币 · 至少 4 步</option>
+              <option value="large">大项目 · 600 金币 · 至少 6 步</option>
+            </select></label>
+            <label>截止日期（可选）<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
+          </div>
+          <div className="form-actions">
+            <button className="btn" type="submit"><GameIcon name="plus" />新建</button>
+            {current.length > 0 && (
+              <button className="btn secondary" type="button" onClick={() => setComposing(false)}>取消</button>
+            )}
+          </div>
+        </form>
+      ) : (
+        <button className="btn secondary project-create-toggle" type="button" onClick={() => setComposing(true)}>
+          <GameIcon name="plus" />新建项目
+        </button>
+      )}
 
-      {visible.length === 0 ? <p className="inline-empty">还没有项目</p> : (
+      {current.length === 0 && completed.length === 0 ? (
+        <p className="inline-empty">把一件大事拆成几步，做完一步就算一步</p>
+      ) : (
         <div className="project-workspace">
           <div className="project-list" aria-label="项目列表">
-            {visible.map((project) => {
+            {current.map((project) => {
               const progress = projectProgress(project)
-              return <button key={project.id} className={selected?.id === project.id ? 'active' : ''} onClick={() => setSelectedId(project.id)}><strong className="task-title-with-category"><CategoryMark category={project.category} />{project.title}</strong><span>{progress.percent}% · {statusLabel(project.status)}</span></button>
+              const needed = Math.max(0, PROJECT_REWARDS[project.size].minBlocks - project.blocks.length)
+              return (
+                <button
+                  key={project.id}
+                  className={selected?.id === project.id ? 'active' : ''}
+                  onClick={() => setSelectedId(project.id)}
+                >
+                  <strong className="task-title-with-category"><CategoryMark category={project.category} />{project.title}</strong>
+                  <span>
+                    {project.status === 'draft'
+                      ? needed > 0
+                        ? `准备中 · 还差 ${needed} 步`
+                        : '准备中 · 可以开始'
+                      : `${progress.percent}% · 进行中`}
+                  </span>
+                </button>
+              )
             })}
           </div>
           {selected && reward && (
             <section className="project-detail">
               <div className="project-detail-heading">
-                <div><span className="eyebrow">{PROJECT_SIZE_LABELS[selected.size]} · 总奖励 {reward.coins} 金币</span><h3 className="task-title-with-category"><CategoryMark category={selected.category} />{selected.title}</h3>{selected.dueDate && <p>截止 {selected.dueDate}</p>}</div>
+                <div>
+                  <span className="eyebrow">{PROJECT_SIZE_LABELS[selected.size]} · {reward.coins} 金币 · 至少 {reward.minBlocks} 步</span>
+                  <h3 className="task-title-with-category"><CategoryMark category={selected.category} />{selected.title}</h3>
+                  {selected.dueDate && (
+                    <p className={selected.dueDate < todayKey && selected.status !== 'completed' ? 'is-overdue' : ''}>
+                      截止 {selected.dueDate}
+                    </p>
+                  )}
+                </div>
               </div>
               <ProgressBar value={projectProgress(selected).percent} max={100} label={`进度 ${projectProgress(selected).percent}%`} />
-              <div className="milestone-track" aria-label="项目里程碑">{([25, 50, 75, 100] as const).map((point) => <span className={selected.awardedMilestones.includes(point) ? 'earned' : ''} key={point}>{point}%</span>)}</div>
-              <div className="project-blocks">
-                {selected.blocks.map((block, index) => (
-                  <div className={`project-block${block.done ? ' done' : ''}`} key={block.id}>
-                    <div><strong>{block.title}</strong><span>{DIFFICULTY_LABELS[block.difficulty]}{block.awardedCoins !== undefined ? ` · +${block.awardedCoins} 金币` : ''}</span></div>
-                    <div className="block-actions">
-                      {block.done ? <button className="btn secondary" onClick={() => undoProjectBlock(selected.id, block.id)}><GameIcon name="undo" />撤销</button> : selected.status === 'active' ? <button className="btn" onClick={() => completeProjectBlock(selected.id, block.id)} aria-label="完成"><GameIcon name="check" /></button> : null}
-                      {!block.done && <><button className="icon-button" disabled={index === 0} onClick={() => moveProjectBlock(selected.id, block.id, -1)} aria-label="上移">↑</button><button className="icon-button" disabled={index === selected.blocks.length - 1} onClick={() => moveProjectBlock(selected.id, block.id, 1)} aria-label="下移">↓</button><button className="icon-button danger-text" onClick={() => deleteProjectBlock(selected.id, block.id)} aria-label="删除分块">×</button></>}
-                    </div>
-                  </div>
+              <div className="milestone-track" aria-label="项目里程碑">
+                {([25, 50, 75, 100] as const).map((point) => (
+                  <span className={selected.awardedMilestones.includes(point) ? 'earned' : ''} key={point}>
+                    {point}%
+                    <small>+{reward.milestones[point].coins}</small>
+                  </span>
                 ))}
+              </div>
+              {selected.status === 'draft' && (
+                <p className="project-hint">
+                  {remainingBlocks > 0
+                    ? `再加 ${remainingBlocks} 步就能开始，开始后会出现在今天`
+                    : '可以开始了。开始后按顺序做，下一步会出现在今天'}
+                </p>
+              )}
+              {selected.status === 'active' && nextBlock && (
+                <p className="project-hint">今天只推下一步：{nextBlock.title}</p>
+              )}
+              <div className="project-blocks">
+                {selected.blocks.length === 0 && (
+                  <p className="inline-empty">先加两步，比如「列大纲」「写初稿」</p>
+                )}
+                {selected.blocks.map((block, index) => {
+                  const isNext = selected.status === 'active' && nextBlock?.id === block.id
+                  const waiting = selected.status === 'active' && !block.done && !isNext
+                  const preview = isNext ? nextBlockReward(selected, block.id) : null
+                  const canUndoToday = Boolean(
+                    block.done &&
+                    block.completedAt &&
+                    localDayKey(new Date(block.completedAt)) === todayKey,
+                  )
+                  return (
+                    <div
+                      className={`project-block${block.done ? ' done' : ''}${isNext ? ' is-next' : ''}${waiting ? ' is-waiting' : ''}`}
+                      key={block.id}
+                    >
+                      <div>
+                        <strong>{block.title}</strong>
+                        <span>
+                          {DIFFICULTY_LABELS[block.difficulty]}
+                          {block.awardedCoins !== undefined
+                            ? ` · +${block.awardedCoins} 金币`
+                            : preview
+                              ? ` · +${preview.coins} 金币`
+                              : ''}
+                        </span>
+                      </div>
+                      <div className="block-actions">
+                        {block.done && canUndoToday && (
+                          <button className="btn secondary" onClick={() => undoProjectBlock(selected.id, block.id)}>
+                            <GameIcon name="undo" />撤销
+                          </button>
+                        )}
+                        {isNext && (
+                          <button className="btn" onClick={() => completeProjectBlock(selected.id, block.id)} aria-label="完成这一步">
+                            <GameIcon name="check" />
+                          </button>
+                        )}
+                        {selected.status === 'draft' && !block.done && (
+                          <>
+                            <button className="icon-button" disabled={index === 0} onClick={() => moveProjectBlock(selected.id, block.id, -1)} aria-label="上移">↑</button>
+                            <button className="icon-button" disabled={index === selected.blocks.length - 1} onClick={() => moveProjectBlock(selected.id, block.id, 1)} aria-label="下移">↓</button>
+                            <button className="icon-button danger-text" onClick={() => deleteProjectBlock(selected.id, block.id)} aria-label="删除分块">×</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
               {selected.status !== 'completed' && (
                 <form className="block-composer" onSubmit={(event) => {
@@ -635,23 +757,57 @@ function ProjectsView() {
                   addProjectBlock(selected.id, blockTitle, blockDifficulty)
                   setBlockTitle('')
                 }}>
-                  <input value={blockTitle} onChange={(event) => setBlockTitle(event.target.value)} placeholder="添加一个可完成的分块" aria-label="分块标题" />
+                  <input value={blockTitle} onChange={(event) => setBlockTitle(event.target.value)} placeholder="加一步，比如：写开头" aria-label="分块标题" />
                   <DifficultySelect value={blockDifficulty} onChange={setBlockDifficulty} label="分块大小" />
                   <button className="btn" type="submit">添加</button>
                 </form>
               )}
-              {selected.status === 'draft' && <div className="project-start"><span className="project-start-tooltip" title={`至少需要 ${reward.minBlocks} 个任务`}><button className="btn" disabled={selected.blocks.length < reward.minBlocks} onClick={() => startProject(selected.id)}>开始项目</button></span></div>}
-              {selected.status === 'completed' && <p className="project-complete-note">项目已完成</p>}
+              {selected.status === 'active' && (
+                <p className="project-hint">再加步会把剩下的奖励摊开</p>
+              )}
+              {selected.status === 'draft' && (
+                <div className="project-start">
+                  <button
+                    className="btn"
+                    disabled={selected.blocks.length < reward.minBlocks}
+                    onClick={() => startProject(selected.id)}
+                  >
+                    开始项目
+                  </button>
+                </div>
+              )}
+              {selected.status === 'completed' && <p className="project-complete-note">收工了</p>}
               <button
                 className="quiet-remove project-remove"
-                title="从当前列表移除，历史进度和奖励会保留"
-                onClick={() => archiveProject(selected.id)}
+                title="从当前列表收起，进度和奖励会留着"
+                onClick={() => {
+                  archiveProject(selected.id)
+                  setSelectedId(null)
+                }}
               >
-                移除项目
+                收进归档
               </button>
             </section>
           )}
         </div>
+      )}
+
+      {completed.length > 0 && (
+        <details className="completed-details">
+          <summary>已完成 {completed.length}</summary>
+          <div className="project-list completed-project-list">
+            {completed.map((project) => (
+              <button
+                key={project.id}
+                className={selected?.id === project.id ? 'active' : ''}
+                onClick={() => setSelectedId(project.id)}
+              >
+                <strong className="task-title-with-category"><CategoryMark category={project.category} />{project.title}</strong>
+                <span>100% · 已完成</span>
+              </button>
+            ))}
+          </div>
+        </details>
       )}
     </>
   )
@@ -715,11 +871,4 @@ function scheduleLabel(schedule: HabitSchedule) {
   if (schedule.type === 'weekdays') return '工作日'
   if (schedule.type === 'weekly') return `每周 ${schedule.weeklyTarget ?? 1} 次`
   return `周${WEEKDAYS.filter((day) => schedule.days?.includes(day.value)).map((day) => day.label).join('、')}`
-}
-
-function statusLabel(status: Project['status']) {
-  if (status === 'draft') return '准备中'
-  if (status === 'active') return '进行中'
-  if (status === 'completed') return '已完成'
-  return '已归档'
 }

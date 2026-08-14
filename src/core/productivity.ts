@@ -150,6 +150,10 @@ export function crossedMilestones(before: number, after: number): ProjectMilesto
   )
 }
 
+export function nextOpenBlock(project: Project) {
+  return project.blocks.find((block) => !block.done)
+}
+
 export function nextBlockReward(project: Project, blockId: string) {
   const config = PROJECT_REWARDS[project.size]
   const block = project.blocks.find((item) => item.id === blockId)
