@@ -25,6 +25,7 @@ import {
   emptyBedCount,
 } from '../core/roomRules'
 import { spriteForNpc } from '../core/visualAssets'
+import { npcIsKnown } from '../core/npcProgress'
 import { BagPanel } from './BagPanel'
 
 type HandbookPage = 'townsfolk' | 'home' | 'collection' | 'records'
@@ -143,7 +144,7 @@ function TownsfolkPages({
   state: ReturnType<typeof useGameStore.getState>
   onOpen: (id: string) => void
 }) {
-  const knownCount = NPC_DEFS.filter((npc) => state.npc[npc.id]?.interacted).length
+  const knownCount = NPC_DEFS.filter((npc) => npcIsKnown(state.npc[npc.id])).length
 
   return (
     <article className="handbook-leaf townsfolk-leaf">
@@ -155,28 +156,28 @@ function TownsfolkPages({
         {NPC_DEFS.map((npc) => {
           const progress = state.npc[npc.id]
           const met = Boolean(progress?.met)
-          const interacted = Boolean(progress?.interacted)
-          const friendship = interacted
+          const known = npcIsKnown(progress)
+          const friendship = known
             ? friendshipStage(progress.friendshipPoints)
             : 0
-          const romance = interacted
+          const romance = known
             ? romanceStage(progress.romancePoints, progress.romanceUnlocked, progress.livingAtHome)
             : 0
           return (
             <button
               key={npc.id}
-              className={`townsfolk-entry${interacted ? '' : ' is-mystery'}`}
-              disabled={!interacted}
+              className={`townsfolk-entry${known ? '' : ' is-mystery'}`}
+              disabled={!known}
               onClick={() => onOpen(npc.id)}
               aria-label={
-                interacted
+                known
                   ? `查看${npc.name}`
                   : met
                     ? '陌生的镇民，去山谷打个招呼'
                     : '未遇见的镇民'
               }
               title={
-                interacted
+                known
                   ? undefined
                   : met
                     ? '去山谷打个招呼'
@@ -191,7 +192,7 @@ function TownsfolkPages({
                 />
               </span>
               <span className="townsfolk-entry-copy">
-                {interacted ? (
+                {known ? (
                   <>
                     <strong>{npc.name}</strong>
                     <small>
