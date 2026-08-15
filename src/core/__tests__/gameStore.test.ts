@@ -126,6 +126,73 @@ describe('task rewards', () => {
   })
 })
 
+
+describe('npc relationship persistence', () => {
+  it('keeps interacted and friendship after save and hydrate', () => {
+    useGameStore.setState(
+      gameState({
+        bond: 5,
+        lastDailyKey: localDayKey(),
+        npc: { shendu: npcProgress({ met: true, interacted: false }) },
+      }),
+    )
+    useGameStore.getState().chat('shendu')
+    const afterChat = useGameStore.getState().npc.shendu
+    expect(afterChat.interacted).toBe(true)
+    expect(afterChat.friendshipPoints).toBeGreaterThan(0)
+
+    const raw = localStorage.getItem('productivity-valley-v1')
+    expect(raw).toBeTruthy()
+    const saved = JSON.parse(raw!).state.npc.shendu
+    expect(saved.interacted).toBe(true)
+    expect(saved.friendshipPoints).toBe(afterChat.friendshipPoints)
+
+    useGameStore.setState(gameState())
+    useGameStore.getState().hydrate()
+    const restored = useGameStore.getState().npc.shendu
+    expect(restored.interacted).toBe(true)
+    expect(restored.friendshipPoints).toBe(afterChat.friendshipPoints)
+    expect(restored.met).toBe(true)
+  })
+
+  it('rehydrates known status from friendship even if interacted was missing', () => {
+    const legacy = gameState({
+      lastDailyKey: localDayKey(),
+      npc: {
+        shendu: npcProgress({
+          met: true,
+          friendshipPoints: 8,
+          interacted: false,
+        }),
+      },
+    })
+    const envelope = JSON.parse(serializeState(legacy))
+    delete envelope.state.npc.shendu.interacted
+    localStorage.setItem('productivity-valley-v1', JSON.stringify(envelope))
+
+    useGameStore.getState().hydrate()
+    expect(useGameStore.getState().npc.shendu.interacted).toBe(true)
+    expect(useGameStore.getState().npc.shendu.friendshipPoints).toBe(8)
+  })
+
+  it('saves dialogue progress when closing the character sheet', () => {
+    useGameStore.setState(
+      gameState({
+        bond: 5,
+        lastDailyKey: localDayKey(),
+        npc: { shendu: npcProgress({ met: true, interacted: false }) },
+      }),
+    )
+    useGameStore.getState().chat('shendu')
+    const entryId = useGameStore.getState().dialogue?.entryId
+    expect(entryId).toBeTruthy()
+    useGameStore.getState().selectNpc(null)
+    expect(useGameStore.getState().dialogue).toBeNull()
+    expect(useGameStore.getState().npc.shendu.seenDialogueIds).toContain(entryId)
+    expect(useGameStore.getState().npc.shendu.interacted).toBe(true)
+  })
+})
+
 describe('daily interaction cap', () => {
   it('plays the first-meet line on the first chat, then normal chat lines', () => {
     useGameStore.setState(

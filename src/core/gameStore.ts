@@ -26,6 +26,10 @@ import {
 import { NPC_DEFS } from './npcs'
 import { completionReactionFor, dialogueFor } from './dialogue'
 import { eligibleEventIds } from './events'
+import {
+  inferInteracted,
+  withNormalizedInteraction,
+} from './npcProgress'
 import { loadState, parseImportedState, saveState } from './storage'
 import { earnedMilestones, giftCapacity, inventoryCount, valleyStage } from './growth'
 import {
@@ -107,16 +111,6 @@ function initialNpc(): Record<string, NpcProgress> {
     }
   }
   return map
-}
-
-function inferInteracted(progress: NpcProgress): boolean {
-  if (progress.interacted) return true
-  if (progress.friendshipPoints > 0 || progress.romancePoints > 0) return true
-  if (progress.romanceUnlocked || progress.livingAtHome) return true
-  if (Object.keys(progress.giftDiscoveries).length > 0) return true
-  if (progress.seenDialogueIds.length > 0) return true
-  if (progress.unlockedEventIds.length > 0) return true
-  return false
 }
 
 function reconcileGiftDiscoveries(
@@ -289,9 +283,19 @@ function maybeUnlockMeet(state: GameState): GameState {
 
 function persist(state: GameState): GameState {
   const unlocked = earnedMilestones(state)
-  const next = maybeUnlockMeet({
+  const withMilestones = {
     ...state,
     milestones: [...new Set([...state.milestones, ...unlocked])],
+  }
+  const normalizedNpc = Object.fromEntries(
+    Object.entries(withMilestones.npc).map(([id, progress]) => [
+      id,
+      withNormalizedInteraction(progress),
+    ]),
+  )
+  const next = maybeUnlockMeet({
+    ...withMilestones,
+    npc: normalizedNpc,
   })
   for (const [npcId, progress] of Object.entries(next.npc)) {
     const friendship = friendshipStage(progress.friendshipPoints)
@@ -444,25 +448,77 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       selectedRoomId: null,
       selectedEventId: null,
     }
-    if (loaded.source === 'backup' || loaded.migrated) saveState(base)
-    set(base)
+    // Always rewrite after load so interacted flags stay normalized on disk.
+    const next = persist(base)
+    set(next)
     get().runDailyIfNeeded()
   },
 
   setTab: (tab) => set({ tab }),
   selectNpc: (id) =>
-    set({
-      selectedNpcId: id,
-      selectedRoomId: null,
-      selectedEventId: null,
-      dialogue: null,
+    set((s) => {
+      const closing = id === null
+      const active = s.dialogue
+      if (closing && active) {
+        const progress = s.npc[active.npcId]
+        if (progress && !progress.seenDialogueIds.includes(active.entryId)) {
+          return persist({
+            ...s,
+            selectedNpcId: null,
+            selectedRoomId: null,
+            selectedEventId: null,
+            dialogue: null,
+            npc: {
+              ...s.npc,
+              [active.npcId]: withNormalizedInteraction({
+                ...progress,
+                seenDialogueIds: [...progress.seenDialogueIds, active.entryId],
+              }),
+            },
+          })
+        }
+      }
+      return {
+        selectedNpcId: id,
+        selectedRoomId: null,
+        selectedEventId: null,
+        dialogue: closing ? null : s.dialogue,
+      }
     }),
   selectRoom: (id) =>
-    set({
-      selectedRoomId: id,
-      selectedNpcId: null,
-      selectedEventId: null,
-      dialogue: null,
+    set((s) => {
+      const active = s.dialogue
+      if (id !== null || !active) {
+        return {
+          selectedRoomId: id,
+          selectedNpcId: null,
+          selectedEventId: null,
+          dialogue: null,
+        }
+      }
+      const progress = s.npc[active.npcId]
+      if (progress && !progress.seenDialogueIds.includes(active.entryId)) {
+        return persist({
+          ...s,
+          selectedRoomId: id,
+          selectedNpcId: null,
+          selectedEventId: null,
+          dialogue: null,
+          npc: {
+            ...s.npc,
+            [active.npcId]: withNormalizedInteraction({
+              ...progress,
+              seenDialogueIds: [...progress.seenDialogueIds, active.entryId],
+            }),
+          },
+        })
+      }
+      return {
+        selectedRoomId: id,
+        selectedNpcId: null,
+        selectedEventId: null,
+        dialogue: null,
+      }
     }),
   selectEvent: (id) => set({ selectedEventId: id }),
   clearToast: () => set({ toast: null }),
@@ -479,10 +535,10 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         dialogue: null,
         npc: {
           ...s.npc,
-          [active.npcId]: {
+          [active.npcId]: withNormalizedInteraction({
             ...progress,
             seenDialogueIds: [...progress.seenDialogueIds, active.entryId],
-          },
+          }),
         },
       })
     }),
@@ -1580,3 +1636,12 @@ export function stageLabels(p: NpcProgress) {
 }
 
 export { emptyBeds, canInvite, totalDailyMaintenance, partnerIds }
+
+let bootstrapped = false
+
+/** Load save before the first React paint to avoid flashing/wiping blank state. */
+export function bootstrapGameStore() {
+  if (bootstrapped) return
+  bootstrapped = true
+  useGameStore.getState().hydrate()
+}

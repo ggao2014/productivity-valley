@@ -8,12 +8,14 @@ import { OnboardingGuide } from './components/OnboardingGuide'
 import { RewardFeedback } from './components/RewardFeedback'
 import { TaskReactionFeedback } from './components/TaskReactionFeedback'
 import { EventSheet } from './components/EventSheet'
-import { useGameStore } from './core/gameStore'
+import { useGameStore, bootstrapGameStore } from './core/gameStore'
 import { GameIcon } from './assets/icons/GameIcon'
 import { BetaFeedback } from './components/BetaFeedback'
 import { recordOpenAndReturns } from './core/beta'
 import { PwaStatus } from './components/PwaStatus'
 import { Handbook } from './components/Handbook'
+
+bootstrapGameStore()
 
 export default function App() {
   const [facility, setFacility] = useState<'handbook' | 'storehouse' | 'settings' | null>(null)
@@ -21,7 +23,6 @@ export default function App() {
   const setTab = useGameStore((s) => s.setTab)
   const coins = useGameStore((s) => s.coins)
   const bond = useGameStore((s) => s.bond)
-  const hydrate = useGameStore((s) => s.hydrate)
   const runDailyIfNeeded = useGameStore((s) => s.runDailyIfNeeded)
   const rewardFeedback = useGameStore((s) => s.rewardFeedback)
   const selectNpc = useGameStore((s) => s.selectNpc)
@@ -30,11 +31,10 @@ export default function App() {
   const clearDialogue = useGameStore((s) => s.clearDialogue)
 
   useEffect(() => {
-    hydrate()
     recordOpenAndReturns()
     const id = window.setInterval(runDailyIfNeeded, 60_000)
     return () => window.clearInterval(id)
-  }, [hydrate, runDailyIfNeeded])
+  }, [runDailyIfNeeded])
 
   useEffect(() => {
     const closeOverlay = (event: KeyboardEvent) => {

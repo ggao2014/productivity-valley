@@ -9,6 +9,7 @@ import type {
   RoomType,
 } from './types'
 import { friendshipStage, hasRoomType } from './economy'
+import { npcIsKnown } from './npcProgress'
 
 export interface DialogueCondition {
   livingAtHome?: boolean
@@ -1468,8 +1469,8 @@ export function completionReactionFor(
   state: GameState,
   task: Task,
 ): { npcId: string; text: string } | null {
-  const available = Object.keys(COMPLETION_REACTIONS).filter(
-    (npcId) => state.npc[npcId]?.interacted,
+  const available = Object.keys(COMPLETION_REACTIONS).filter((npcId) =>
+    npcIsKnown(state.npc[npcId]),
   )
   if (available.length === 0) return null
   const completedCount = state.tasks.filter((item) => item.done).length

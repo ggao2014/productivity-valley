@@ -24,6 +24,7 @@ import {
   romanceBlockReason,
 } from '../core/progression'
 import { eventsForNpc } from '../core/events'
+import { npcIsKnown } from '../core/npcProgress'
 import {
   portraitForNpc,
   spriteForNpc,
@@ -346,7 +347,7 @@ export function ValleyPanel({
           })}
         </div>
         {scenePeople.map(({ npc: n, activity }) => {
-          const known = Boolean(npc[n.id]?.interacted)
+          const known = npcIsKnown(npc[n.id])
           return (
             <button
               key={n.id}
@@ -465,6 +466,7 @@ export function NpcSheet() {
       (threshold) => threshold > npcState.romancePoints,
     ) ?? ROMANCE_THRESHOLDS[4]
   const activeDialogue = dialogue?.npcId === id ? dialogue : null
+  const known = npcIsKnown(npcState)
   const portrait = portraitForNpc(id, activeDialogue?.tone)
   const giftKnowledge = GIFT_DEFS.flatMap((gift) => {
     const reaction = npcState.giftDiscoveries[gift.id]
@@ -498,9 +500,9 @@ export function NpcSheet() {
             </div>
           )}
           <div className="npc-sheet-copy">
-            <h2>{npcState.interacted || activeDialogue ? def.name : '？'}</h2>
+            <h2>{known || activeDialogue ? def.name : '？'}</h2>
             <p className="muted">
-              {npcState.interacted
+              {known
                 ? def.blurb
                 : activeDialogue
                   ? '刚打过招呼'
@@ -511,7 +513,7 @@ export function NpcSheet() {
                 <GameIcon name="home" />
               </span>
             )}
-            {npcState.interacted ? (
+            {known ? (
             <div className="relationship-bars" aria-label="关系进度">
               <div>
                 <span title={`友情：${FRIENDSHIP_LABELS[f]}`} aria-label={`友情：${FRIENDSHIP_LABELS[f]}`}><GameIcon name="chat" />友情</span>
@@ -537,7 +539,7 @@ export function NpcSheet() {
           </div>
         </div>}
 
-        {profilePage === 1 && npcState.interacted ? (
+        {profilePage === 1 && known ? (
           <div className="journal-story-page">
             <section className="preference-journal journal-page-preferences" aria-labelledby="preference-title">
               <div className="preference-heading">
@@ -721,7 +723,7 @@ export function NpcSheet() {
           </>
         )}
 
-        {npcState.interacted && relationshipEvents.length > 0 && !activeDialogue && (
+        {known && relationshipEvents.length > 0 && !activeDialogue && (
           <nav className="journal-page-nav" aria-label="人物手记分页">
             {profilePage === 1 && (
               <button
