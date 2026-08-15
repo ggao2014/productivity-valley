@@ -87,13 +87,11 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
   const openProjectSteps = activeProjects.filter((project) =>
     project.blocks.some((block) => !block.done),
   ).length
-  const projectTodayTotal = blocksDoneToday + openProjectSteps
+  const openHabits = dueHabits.filter((habit) => !habitCompletedOn(habit)).length
+  const openTasks = tasks.filter((task) => !task.done).length
+  const todayOpen = openHabits + openProjectSteps + openTasks
   const todayCompleted = taskToday.completed + habitDoneToday + blocksDoneToday
-  const todayTotal =
-    dueHabits.length +
-    projectTodayTotal +
-    tasks.filter((task) => !task.done).length +
-    taskToday.completed
+  const todayTotal = todayCompleted + todayOpen
 
   return (
     <div className="panel productivity-panel">
@@ -111,13 +109,8 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
 
       {view === 'today' && (
         <>
-        <section className="today-summary" aria-label="今日概况">
-          <div className="today-summary-total"><span>今天</span><strong>{todayCompleted}/{Math.max(todayCompleted, todayTotal)}</strong></div>
-          <div className="today-summary-items">
-            <span>习惯 <b>{habitDoneToday}/{dueHabits.length}</b></span>
-            <span>项目 <b>{blocksDoneToday}/{projectTodayTotal}</b></span>
-            <span>待办 <b>{taskToday.completed}/{tasks.filter((task) => !task.done).length + taskToday.completed}</b></span>
-          </div>
+        <section className="today-summary today-summary-slim" aria-label="今日概况">
+          <div className="today-summary-total"><span>今天</span><strong>{todayCompleted}/{todayTotal}</strong></div>
           <small>{activeDayStreak(tasks)} 天活跃</small>
         </section>
         <TodayView
@@ -173,8 +166,10 @@ function TodayView({
     [plans, tasks, habits, projects, todayKey],
   )
   const grouped = groupBySlot(timelineItems)
-  const openCount = timelineItems.filter((item) => !item.done).length
-  const doneCount = timelineItems.filter((item) => item.done).length
+  const openItems = PLAN_SLOTS.flatMap((slot) =>
+    grouped[slot].filter((item) => !item.done),
+  )
+  const doneItems = timelineItems.filter((item) => item.done)
 
   function targetFor(item: TimelineItem): PlanTarget {
     if (item.kind === 'task') return { kind: 'task', id: item.task.id }
@@ -190,66 +185,57 @@ function TodayView({
         addTask(title, difficulty, category)
         setTitle('')
       }}>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="添加临时待办" aria-label="待办标题" />
-        <CategoryPicker value={category} onChange={setCategory} />
-        <DifficultySelect value={difficulty} onChange={setDifficulty} label="难度" />
+        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="写下一件小事" aria-label="待办标题" />
         <button className="btn" type="submit"><GameIcon name="plus" />添加</button>
+        <div className="today-quick-meta">
+          <CategoryPicker value={category} onChange={setCategory} compact />
+          <DifficultySelect value={difficulty} onChange={setDifficulty} label="难度" />
+        </div>
       </form>
 
-      <p className="hint timeline-hint">把事情排进上午 / 下午 / 晚上</p>
-
-      <div className="day-timeline" aria-label="今日时间轴">
-        {PLAN_SLOTS.map((slot) => {
-          const items = grouped[slot]
-          const doneInSlot = items.filter((item) => item.done).length
-          return (
-            <section key={slot} className={`timeline-slot slot-${slot}`}>
-              <header className="timeline-slot-head">
-                <h3>{PLAN_SLOT_LABELS[slot]}</h3>
-                <span className="muted">
-                  {items.length === 0 ? '空' : `${doneInSlot}/${items.length}`}
-                </span>
-              </header>
-              <div className="list today-action-list">
-                {items.length === 0 && <p className="inline-empty">还没有安排</p>}
-                {items.map((item) => (
-                  <TimelineRow
-                    key={item.id}
-                    item={item}
-                    slot={slot}
-                    rewardedHabitIds={rewardedHabitIds}
-                    onboardingStep={onboardingStep}
-                    editingId={editingId}
-                    editTitle={editTitle}
-                    editDifficulty={editDifficulty}
-                    editCategory={editCategory}
-                    setEditingId={setEditingId}
-                    setEditTitle={setEditTitle}
-                    setEditDifficulty={setEditDifficulty}
-                    setEditCategory={setEditCategory}
-                    editTask={editTask}
-                    completeTask={completeTask}
-                    deleteTask={deleteTask}
-                    adjustHabit={adjustHabit}
-                    completeProjectBlock={completeProjectBlock}
-                    setPlan={(nextSlot) => setPlan(targetFor(item), nextSlot)}
-                  />
-                ))}
+      <div className="today-focus-list" aria-label="今天要做">
+        {openItems.length === 0 ? (
+          <p className="inline-empty">今天没事了，想做就加一件</p>
+        ) : (
+          openItems.map((item, index) => {
+            const prevSlot = index > 0 ? openItems[index - 1].slot : null
+            const showSlot = item.slot !== prevSlot
+            return (
+              <div key={item.id} className="today-focus-item">
+                {showSlot && (
+                  <h3 className="today-slot-label">{PLAN_SLOT_LABELS[item.slot]}</h3>
+                )}
+                <TimelineRow
+                  item={item}
+                  slot={item.slot}
+                  rewardedHabitIds={rewardedHabitIds}
+                  onboardingStep={onboardingStep}
+                  editingId={editingId}
+                  editTitle={editTitle}
+                  editDifficulty={editDifficulty}
+                  editCategory={editCategory}
+                  setEditingId={setEditingId}
+                  setEditTitle={setEditTitle}
+                  setEditDifficulty={setEditDifficulty}
+                  setEditCategory={setEditCategory}
+                  editTask={editTask}
+                  completeTask={completeTask}
+                  deleteTask={deleteTask}
+                  adjustHabit={adjustHabit}
+                  completeProjectBlock={completeProjectBlock}
+                  setPlan={(nextSlot) => setPlan(targetFor(item), nextSlot)}
+                />
               </div>
-            </section>
-          )
-        })}
+            )
+          })
+        )}
       </div>
 
-      {(openCount > 0 || doneCount > 0) && (
-        <p className="muted timeline-foot">今天 {doneCount}/{openCount + doneCount}</p>
-      )}
-
-      {doneCount > 0 && (
+      {doneItems.length > 0 && (
         <details className="completed-details">
-          <summary>已完成 {doneCount}</summary>
+          <summary>已完成 {doneItems.length}</summary>
           <div className="list">
-            {timelineItems.filter((item) => item.done).map((item) => {
+            {doneItems.map((item) => {
               if (item.kind === 'habit') {
                 return (
                   <div key={`done-${item.id}`} className="row done task-row">
