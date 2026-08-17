@@ -4269,7 +4269,6 @@ button {
 .form-actions{display:flex;gap:8px}
 .form-actions .btn{justify-self:start}
 .project-create-toggle{margin-top:4px}
-.project-hint{margin:0 0 10px;color:var(--ink-soft);font-size:.78rem}
 .project-detail-heading p.is-overdue{color:#8f4b42}
 .milestone-track span{display:grid;gap:2px}
 .milestone-track small{display:block;font-size:.62rem;font-weight:700;opacity:.8}
