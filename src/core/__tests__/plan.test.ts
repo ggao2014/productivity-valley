@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  addDaysToDayKey,
+  buildDeferredItems,
   buildTimelineItems,
   groupBySlot,
+  movePlan,
+  planPickerValue,
+  relativePlanDayLabel,
   removePlansForTarget,
+  resolvePlanPicker,
   upsertPlan,
 } from '../plan'
 import type { Habit, PlanAssignment, Project, Task } from '../types'
@@ -61,6 +67,73 @@ describe('day plan helpers', () => {
     expect(plans).toEqual([
       { dayKey: today, slot: 'evening', target: { kind: 'task', id: 't1' } },
     ])
+  })
+
+  it('moves a plan to another day and clears the old assignment', () => {
+    let plans = upsertPlan([], today, { kind: 'task', id: 't1' }, 'morning')
+    plans = movePlan(
+      plans,
+      { kind: 'task', id: 't1' },
+      'anytime',
+      addDaysToDayKey(today, 1),
+    )
+    expect(plans).toEqual([
+      {
+        dayKey: '2026-08-12',
+        slot: 'anytime',
+        target: { kind: 'task', id: 't1' },
+      },
+    ])
+  })
+
+  it('resolves picker shortcuts into day keys', () => {
+    expect(resolvePlanPicker('morning', today)).toEqual({
+      slot: 'morning',
+      dayKey: today,
+    })
+    expect(resolvePlanPicker('tomorrow', today)).toEqual({
+      slot: 'anytime',
+      dayKey: '2026-08-12',
+    })
+    expect(resolvePlanPicker('later', today)).toEqual({
+      slot: 'anytime',
+      dayKey: '2026-08-18',
+    })
+    expect(relativePlanDayLabel('2026-08-12', today)).toBe('明天')
+    expect(
+      planPickerValue(
+        [
+          {
+            dayKey: '2026-08-13',
+            slot: 'anytime',
+            target: { kind: 'task', id: 't1' },
+          },
+        ],
+        { kind: 'task', id: 't1' },
+        today,
+      ),
+    ).toBe('day-after')
+  })
+
+  it('lists deferred tasks and blocks for later days', () => {
+    const items = buildDeferredItems({
+      plans: [
+        {
+          dayKey: '2026-08-12',
+          slot: 'anytime',
+          target: { kind: 'task', id: 't1' },
+        },
+        {
+          dayKey: '2026-08-18',
+          slot: 'anytime',
+          target: { kind: 'block', projectId: 'p1', blockId: 'b1' },
+        },
+      ],
+      tasks: [task({ id: 't1', title: '明天的事' })],
+      projects: [project({ id: 'p1', title: '作品集' })],
+      dayKey: today,
+    })
+    expect(items.map((item) => item.id)).toEqual(['t1', 'p1:b1'])
   })
 
   it('removes all plans for a deleted target', () => {

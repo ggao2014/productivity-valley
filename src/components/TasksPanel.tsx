@@ -18,15 +18,22 @@ import {
 import {
   PLAN_SLOTS,
   PLAN_SLOT_LABELS,
+  PLAN_DAY_SHORTCUTS,
+  PLAN_DAY_SHORTCUT_LABELS,
+  buildDeferredItems,
   buildTimelineItems,
   groupBySlot,
+  planPickerValue,
+  relativePlanDayLabel,
+  resolvePlanPicker,
+  type DeferredItem,
+  type PlanPickerValue,
   type TimelineItem,
 } from '../core/plan'
 import type {
   Difficulty,
   HabitSchedule,
   HabitScheduleType,
-  PlanSlot,
   PlanTarget,
   ProjectSize,
   TaskCategory,
@@ -165,16 +172,31 @@ function TodayView({
       }),
     [plans, tasks, habits, projects, todayKey],
   )
+  const deferredItems = useMemo(
+    () =>
+      buildDeferredItems({
+        plans: plans ?? [],
+        tasks,
+        projects,
+        dayKey: todayKey,
+      }),
+    [plans, tasks, projects, todayKey],
+  )
   const grouped = groupBySlot(timelineItems)
   const openItems = PLAN_SLOTS.flatMap((slot) =>
     grouped[slot].filter((item) => !item.done),
   )
   const doneItems = timelineItems.filter((item) => item.done)
 
-  function targetFor(item: TimelineItem): PlanTarget {
+  function targetFor(item: TimelineItem | DeferredItem): PlanTarget {
     if (item.kind === 'task') return { kind: 'task', id: item.task.id }
     if (item.kind === 'habit') return { kind: 'habit', id: item.habit.id }
     return { kind: 'block', projectId: item.project.id, blockId: item.blockId }
+  }
+
+  function applyPlan(target: PlanTarget, value: PlanPickerValue) {
+    const next = resolvePlanPicker(value, todayKey)
+    setPlan(target, next.slot, next.dayKey)
   }
 
   return (
@@ -207,7 +229,6 @@ function TodayView({
                 )}
                 <TimelineRow
                   item={item}
-                  slot={item.slot}
                   rewardedHabitIds={rewardedHabitIds}
                   onboardingStep={onboardingStep}
                   editingId={editingId}
@@ -223,13 +244,62 @@ function TodayView({
                   deleteTask={deleteTask}
                   adjustHabit={adjustHabit}
                   completeProjectBlock={completeProjectBlock}
-                  setPlan={(nextSlot) => setPlan(targetFor(item), nextSlot)}
+                  setPlan={(value) => applyPlan(targetFor(item), value)}
+                  planValue={planPickerValue(plans ?? [], targetFor(item), todayKey)}
+                  allowDayShortcuts={item.kind !== 'habit'}
                 />
               </div>
             )
           })
         )}
       </div>
+
+      {deferredItems.length > 0 && (
+        <details className="completed-details deferred-details">
+          <summary>以后要做 {deferredItems.length}</summary>
+          <div className="list">
+            {deferredItems.map((item) => {
+              const target = targetFor(item)
+              const title =
+                item.kind === 'task'
+                  ? item.task.title
+                  : (item.project.blocks.find((block) => block.id === item.blockId)?.title ?? '分块')
+              return (
+                <div key={`deferred-${item.id}`} className="row task-row deferred-row">
+                  <div className="row-main">
+                    <strong className="task-title-with-category">
+                      {item.kind === 'task' ? (
+                        <CategoryMark category={item.task.category} />
+                      ) : (
+                        <CategoryMark category={item.project.category} />
+                      )}
+                      {title}
+                    </strong>
+                    <span className="muted">
+                      {item.kind === 'block' ? `${item.project.title} · ` : ''}
+                      {relativePlanDayLabel(item.dayKey, todayKey)}
+                    </span>
+                    <PlanSlotPicker
+                      value={planPickerValue(plans ?? [], target, todayKey)}
+                      allowDayShortcuts
+                      onChange={(value) => applyPlan(target, value)}
+                    />
+                  </div>
+                  <div className="task-actions">
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => applyPlan(target, 'anytime')}
+                    >
+                      拉回今天
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </details>
+      )}
 
       {doneItems.length > 0 && (
         <details className="completed-details">
@@ -290,9 +360,46 @@ function TodayView({
   )
 }
 
+function PlanSlotPicker({
+  value,
+  onChange,
+  allowDayShortcuts,
+}: {
+  value: PlanPickerValue
+  onChange: (value: PlanPickerValue) => void
+  allowDayShortcuts?: boolean
+}) {
+  return (
+    <label className="slot-picker">
+      <span className="visually-hidden">排到</span>
+      <select
+        value={value}
+        aria-label="排到哪天或时段"
+        onChange={(event) => onChange(event.target.value as PlanPickerValue)}
+      >
+        <optgroup label="今天">
+          {PLAN_SLOTS.map((option) => (
+            <option key={option} value={option}>
+              {PLAN_SLOT_LABELS[option]}
+            </option>
+          ))}
+        </optgroup>
+        {allowDayShortcuts && (
+          <optgroup label="换一天">
+            {PLAN_DAY_SHORTCUTS.map((option) => (
+              <option key={option} value={option}>
+                {PLAN_DAY_SHORTCUT_LABELS[option]}
+              </option>
+            ))}
+          </optgroup>
+        )}
+      </select>
+    </label>
+  )
+}
+
 function TimelineRow({
   item,
-  slot,
   rewardedHabitIds,
   onboardingStep,
   editingId,
@@ -309,9 +416,10 @@ function TimelineRow({
   adjustHabit,
   completeProjectBlock,
   setPlan,
+  planValue,
+  allowDayShortcuts,
 }: {
   item: TimelineItem
-  slot: PlanSlot
   rewardedHabitIds: string[]
   onboardingStep: number
   editingId: string | null
@@ -327,7 +435,9 @@ function TimelineRow({
   deleteTask: (id: string) => void
   adjustHabit: (id: string, delta: number) => void
   completeProjectBlock: (projectId: string, blockId: string) => void
-  setPlan: (slot: PlanSlot) => void
+  setPlan: (value: PlanPickerValue) => void
+  planValue: PlanPickerValue
+  allowDayShortcuts?: boolean
 }) {
   const kindClass =
     item.kind === 'habit' ? 'is-habit' : item.kind === 'block' ? 'is-project' : 'is-todo'
@@ -380,20 +490,11 @@ function TimelineRow({
             `${item.project.title} · ${projectProgress(item.project).percent}%`}
         </span>
         {!item.done && (
-          <label className="slot-picker">
-            <span className="visually-hidden">时段</span>
-            <select
-              value={slot}
-              aria-label="排到时段"
-              onChange={(event) => setPlan(event.target.value as PlanSlot)}
-            >
-              {PLAN_SLOTS.map((option) => (
-                <option key={option} value={option}>
-                  {PLAN_SLOT_LABELS[option]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <PlanSlotPicker
+            value={planValue}
+            allowDayShortcuts={allowDayShortcuts}
+            onChange={setPlan}
+          />
         )}
       </div>
 

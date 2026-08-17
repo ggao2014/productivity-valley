@@ -42,7 +42,8 @@ import {
   removePlansForBlock,
   removePlansForProject,
   removePlansForTarget,
-  upsertPlan,
+  movePlan,
+  relativePlanDayLabel,
 } from './plan'
 import {
   assignResident,
@@ -733,11 +734,18 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
 
   setPlan: (target, slot, dayKey) => {
     set((s) => {
-      const key = dayKey ?? localDayKey()
+      const today = localDayKey()
+      const key = dayKey ?? today
+      const toast =
+        key === today
+          ? slot === 'anytime'
+            ? '已放到有空再做'
+            : `已排到${slot === 'morning' ? '上午' : slot === 'afternoon' ? '下午' : '晚上'}`
+          : `已排到${relativePlanDayLabel(key, today)}`
       return persist({
         ...s,
-        plans: upsertPlan(s.plans ?? [], key, target, slot),
-        toast: slot === 'anytime' ? '已放到有空再做' : `已排到${slot === 'morning' ? '上午' : slot === 'afternoon' ? '下午' : '晚上'}`,
+        plans: movePlan(s.plans ?? [], target, slot, key),
+        toast,
       })
     })
   },

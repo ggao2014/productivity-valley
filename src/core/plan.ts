@@ -51,11 +51,165 @@ export function upsertPlan(
   return [...without, { dayKey, slot, target }]
 }
 
+export function addDaysToDayKey(dayKey: string, days: number): string {
+  const date = new Date(`${dayKey}T12:00:00`)
+  date.setDate(date.getDate() + days)
+  return localDayKey(date)
+}
+
+export type PlanDayShortcut = 'tomorrow' | 'day-after' | 'later'
+
+export const PLAN_DAY_SHORTCUTS: PlanDayShortcut[] = ['tomorrow', 'day-after', 'later']
+
+export const PLAN_DAY_SHORTCUT_LABELS: Record<PlanDayShortcut, string> = {
+  tomorrow: '明天',
+  'day-after': '后天',
+  later: '以后',
+}
+
+const PLAN_DAY_SHORTCUT_OFFSETS: Record<PlanDayShortcut, number> = {
+  tomorrow: 1,
+  'day-after': 2,
+  later: 7,
+}
+
+export type PlanPickerValue = PlanSlot | PlanDayShortcut
+
+export function resolvePlanPicker(
+  value: PlanPickerValue,
+  todayKey = localDayKey(),
+): { slot: PlanSlot; dayKey: string } {
+  if (value === 'tomorrow' || value === 'day-after' || value === 'later') {
+    return {
+      slot: 'anytime',
+      dayKey: addDaysToDayKey(todayKey, PLAN_DAY_SHORTCUT_OFFSETS[value]),
+    }
+  }
+  return { slot: value, dayKey: todayKey }
+}
+
+export function planPickerValue(
+  plans: PlanAssignment[],
+  target: PlanTarget,
+  todayKey = localDayKey(),
+): PlanPickerValue {
+  const todayPlan = findPlan(plans, todayKey, target)
+  if (todayPlan) return todayPlan.slot
+
+  const future = plans
+    .filter(
+      (plan) => samePlanTarget(plan.target, target) && plan.dayKey > todayKey,
+    )
+    .sort((a, b) => a.dayKey.localeCompare(b.dayKey))[0]
+
+  if (!future) return 'anytime'
+
+  for (const shortcut of PLAN_DAY_SHORTCUTS) {
+    if (
+      future.dayKey ===
+      addDaysToDayKey(todayKey, PLAN_DAY_SHORTCUT_OFFSETS[shortcut])
+    ) {
+      return shortcut
+    }
+  }
+  return 'later'
+}
+
+export function relativePlanDayLabel(
+  dayKey: string,
+  todayKey = localDayKey(),
+): string {
+  for (const shortcut of PLAN_DAY_SHORTCUTS) {
+    if (
+      dayKey === addDaysToDayKey(todayKey, PLAN_DAY_SHORTCUT_OFFSETS[shortcut])
+    ) {
+      return PLAN_DAY_SHORTCUT_LABELS[shortcut]
+    }
+  }
+  const [, month, day] = dayKey.split('-')
+  return `${Number(month)}月${Number(day)}日`
+}
+
+export type DeferredItem =
+  | {
+      kind: 'task'
+      id: string
+      task: Task
+      dayKey: string
+      slot: PlanSlot
+    }
+  | {
+      kind: 'block'
+      id: string
+      project: Project
+      blockId: string
+      dayKey: string
+      slot: PlanSlot
+    }
+
+export function buildDeferredItems(input: {
+  plans: PlanAssignment[]
+  tasks: Task[]
+  projects: Project[]
+  dayKey?: string
+}): DeferredItem[] {
+  const todayKey = input.dayKey ?? localDayKey()
+  const items: DeferredItem[] = []
+
+  for (const plan of input.plans) {
+    if (plan.dayKey <= todayKey) continue
+    const target = plan.target
+
+    if (target.kind === 'task') {
+      const task = input.tasks.find((entry) => entry.id === target.id)
+      if (!task || task.done) continue
+      items.push({
+        kind: 'task',
+        id: task.id,
+        task,
+        dayKey: plan.dayKey,
+        slot: plan.slot,
+      })
+      continue
+    }
+
+    if (target.kind !== 'block') continue
+    const project = input.projects.find((entry) => entry.id === target.projectId)
+    if (!project || project.status !== 'active') continue
+    const block = project.blocks.find((entry) => entry.id === target.blockId)
+    if (!block || block.done) continue
+    items.push({
+      kind: 'block',
+      id: `${project.id}:${block.id}`,
+      project,
+      blockId: block.id,
+      dayKey: plan.dayKey,
+      slot: plan.slot,
+    })
+  }
+
+  return items.sort((a, b) =>
+    a.dayKey === b.dayKey
+      ? a.id.localeCompare(b.id)
+      : a.dayKey.localeCompare(b.dayKey),
+  )
+}
+
 export function removePlansForTarget(
   plans: PlanAssignment[],
   target: PlanTarget,
 ): PlanAssignment[] {
   return plans.filter((plan) => !samePlanTarget(plan.target, target))
+}
+
+/** Move a target onto one day/slot, clearing any other-day plans for it. */
+export function movePlan(
+  plans: PlanAssignment[],
+  target: PlanTarget,
+  slot: PlanSlot,
+  dayKey: string,
+): PlanAssignment[] {
+  return upsertPlan(removePlansForTarget(plans, target), dayKey, target, slot)
 }
 
 export function removePlansForProject(
