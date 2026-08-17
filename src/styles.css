@@ -527,6 +527,65 @@ button {
 .record-numbers > span { display: grid; gap: 2px; padding: 8px 3px; border-radius: 10px; background: rgba(113, 126, 87, .09); text-align: center; }
 .record-numbers b { color: #526246; font-size: 1.05rem; }
 .record-numbers small { color: #817462; font-size: .62rem; }
+
+.ink-portrait {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 14px;
+}
+.ink-dim {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+}
+.ink-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--ink-bg);
+}
+.ink-icon .game-icon { width: 14px; height: 14px; }
+.ink-well {
+  display: flex;
+  align-items: flex-end;
+  width: 11px;
+  height: 68px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(99, 72, 43, .08);
+}
+.ink-well b {
+  display: block;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}
+.ink-weeks {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px;
+  height: 58px;
+  margin: 0 0 18px;
+}
+.ink-week {
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  border-radius: 7px;
+  background: rgba(99, 72, 43, .06);
+}
+.ink-week.is-now { box-shadow: 0 0 0 1px rgba(99, 72, 43, .18); }
+.ink-week i { display: block; flex-basis: 0; min-height: 0; background: var(--ink); }
+[data-ink="work"] { --ink: #386b91; --ink-bg: #dceaf3; }
+[data-ink="study"] { --ink: #715b91; --ink-bg: #e9e1f2; }
+[data-ink="life"] { --ink: #9a641d; --ink-bg: #f3e5c9; }
+[data-ink="health"] { --ink: #3f754f; --ink-bg: #dcebdc; }
+[data-ink="bond"] { --ink: #a45c6a; --ink-bg: #f3dce1; }
 .milestone-index { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
 .milestone-index > div { min-width: 0; display: grid; justify-items: center; gap: 3px; text-align: center; }
 .milestone-index img { width: 58px; height: 58px; object-fit: contain; }

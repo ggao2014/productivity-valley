@@ -16,8 +16,16 @@ import {
   VALLEY_STAGES,
   valleyGrowthPoints,
   valleyStage,
-  weeklyProgress,
 } from '../core/growth'
+import {
+  INK_ACTIVITY,
+  INK_DIMENSIONS,
+  INK_META,
+  inkFill,
+  inkPortrait,
+  inkWeeks,
+  weekInkTotal,
+} from '../core/ink'
 import { useGameStore } from '../core/gameStore'
 import { NPC_DEFS } from '../core/npcs'
 import {
@@ -333,16 +341,9 @@ function RecordPages({
   const growthPoints = valleyGrowthPoints(state)
   const growth = VALLEY_STAGES[growthStage]
   const next = growthStage < 3 ? VALLEY_STAGES[growthStage + 1].threshold : growthPoints
-  const week = weeklyProgress(state.tasks)
-  const completedTasks = state.tasks.filter((task) => task.done).length
-  const habitDays = state.habits.reduce(
-    (sum, habit) => sum + habit.entries.filter((entry) => entry.count >= habit.targetCount).length,
-    0,
-  )
-  const projectBlocks = state.projects.reduce(
-    (sum, project) => sum + project.blocks.filter((block) => block.done).length,
-    0,
-  )
+  const portrait = useMemo(() => inkPortrait(state), [state])
+  const fill = inkFill(portrait)
+  const weeks = useMemo(() => inkWeeks(state), [state])
   const unlockedEvents = useMemo(
     () => RELATIONSHIP_EVENTS.filter((event) => state.npc[event.npcId]?.unlockedEventIds.includes(event.id)),
     [state.npc],
@@ -360,11 +361,35 @@ function RecordPages({
           <span>{Math.min(growthPoints, next)}/{next}</span>
           <i><b style={{ width: `${growthStage === 3 ? 100 : Math.min(100, growthPoints / next * 100)}%` }} /></i>
         </div>
-        <div className="record-numbers">
-          <span><b>{completedTasks}</b><small>待办</small></span>
-          <span><b>{habitDays}</b><small>习惯</small></span>
-          <span><b>{projectBlocks}</b><small>项目步数</small></span>
-          <span><b>{week.activeDays}</b><small>本周活跃</small></span>
+        <div className="ink-portrait" aria-label="最近的样子">
+          {INK_DIMENSIONS.map((dim) => (
+            <div key={dim} className="ink-dim" data-ink={dim} title={INK_META[dim].label}>
+              <span className="ink-icon" aria-hidden="true">
+                <GameIcon name={INK_META[dim].icon} />
+              </span>
+              <span className="visually-hidden">{INK_META[dim].label}</span>
+              <i className="ink-well" aria-hidden="true">
+                <b style={{ height: `${Math.round(fill[dim] * 100)}%` }} />
+              </i>
+            </div>
+          ))}
+        </div>
+        <div className="ink-weeks" aria-label="近几周">
+          {weeks.map((week, index) => {
+            const total = weekInkTotal(week.totals)
+            return (
+              <div
+                key={week.weekKey}
+                className={`ink-week${total === 0 ? ' is-empty' : ''}${index === weeks.length - 1 ? ' is-now' : ''}`}
+              >
+                {INK_ACTIVITY.map((dim) =>
+                  week.totals[dim] > 0 ? (
+                    <i key={dim} data-ink={dim} style={{ flexGrow: week.totals[dim] }} />
+                  ) : null,
+                )}
+              </div>
+            )
+          })}
         </div>
         <div className="milestone-index">
           {MILESTONES.map((milestone) => {
