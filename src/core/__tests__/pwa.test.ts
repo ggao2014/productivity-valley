@@ -22,7 +22,7 @@ describe('offline application shell', () => {
 
   it('caches the shell and visited art while retaining prompted updates', () => {
     expect(worker).toContain("const CACHE_PREFIX = 'productivity-valley-'")
-    expect(worker).toContain('const CACHE = `${CACHE_PREFIX}v0.9.1`')
+    expect(worker).toContain('const CACHE = `${CACHE_PREFIX}v0.9.2`')
     expect(worker).toContain('key.startsWith(CACHE_PREFIX)')
     expect(worker).toContain('const MAX_CACHE_ENTRIES = 120')
     expect(worker).toContain("url.pathname.includes('/art/')")

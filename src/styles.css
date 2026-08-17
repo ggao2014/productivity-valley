@@ -4379,10 +4379,8 @@ button {
   color: var(--moss-deep);
 }
 .timeline-foot { margin: 0 0 10px; }
-.slot-picker {
-  display: inline-flex;
-  margin-top: 4px;
-}
+.deferred-details { margin-top: 10px; }
+.deferred-row .slot-picker { margin-top: 6px; }
 .slot-picker select {
   min-height: 28px;
   padding: 2px 8px;
