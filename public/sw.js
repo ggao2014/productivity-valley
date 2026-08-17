@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'productivity-valley-'
-const CACHE = `${CACHE_PREFIX}v0.9.3`
+const CACHE = `${CACHE_PREFIX}v0.9.4`
 const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './pwa-192.png']
 const MAX_CACHE_ENTRIES = 120
 
