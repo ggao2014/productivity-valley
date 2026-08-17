@@ -363,7 +363,7 @@ function RecordPages({
         <div className="record-numbers">
           <span><b>{completedTasks}</b><small>待办</small></span>
           <span><b>{habitDays}</b><small>习惯</small></span>
-          <span><b>{projectBlocks}</b><small>项目分块</small></span>
+          <span><b>{projectBlocks}</b><small>项目步数</small></span>
           <span><b>{week.activeDays}</b><small>本周活跃</small></span>
         </div>
         <div className="milestone-index">

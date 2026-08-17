@@ -116,7 +116,7 @@ describe('project budgets', () => {
     const id = useGameStore.getState().addProject('ship feature', 'small')
     expect(id).toBeTruthy()
     useGameStore.getState().startProject(id!)
-    expect(useGameStore.getState().toast).toBe('至少需要 2 个分块')
+    expect(useGameStore.getState().toast).toBe('至少 2 步')
     expect(useGameStore.getState().projects[0].status).toBe('draft')
 
     useGameStore.getState().addProjectBlock(id!, 'design', 'small')

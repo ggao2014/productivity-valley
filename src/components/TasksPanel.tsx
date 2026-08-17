@@ -263,7 +263,7 @@ function TodayView({
               const title =
                 item.kind === 'task'
                   ? item.task.title
-                  : (item.project.blocks.find((block) => block.id === item.blockId)?.title ?? '分块')
+                  : (item.project.blocks.find((block) => block.id === item.blockId)?.title ?? '一步')
               return (
                 <div key={`deferred-${item.id}`} className="row task-row deferred-row">
                   <div className="row-main">
@@ -478,7 +478,7 @@ function TimelineRow({
           {item.kind === 'task' && item.task.title}
           {item.kind === 'habit' && item.habit.title}
           {item.kind === 'block' &&
-            (item.project.blocks.find((block) => block.id === item.blockId)?.title ?? '分块')}
+            (item.project.blocks.find((block) => block.id === item.blockId)?.title ?? '一步')}
         </strong>
         <span className="muted">
           {item.kind === 'task' && TASK_REWARDS[item.task.difficulty].label}
@@ -686,14 +686,11 @@ function ProjectsView() {
   const [blockDifficulty, setBlockDifficulty] = useState<Difficulty>('small')
   const reward = selected ? PROJECT_REWARDS[selected.size] : null
   const nextBlock = selected ? nextOpenBlock(selected) : undefined
-  const remainingBlocks = reward && selected
-    ? Math.max(0, reward.minBlocks - selected.blocks.length)
-    : 0
   const todayKey = localDayKey()
 
   return (
     <>
-      <SectionHeading title="项目" detail="先拆成几步，再按顺序做。做到 25%/50%/75%/100% 会额外发奖。" />
+      <SectionHeading title="项目" detail="拆成几步，按顺序做" />
       {composing ? (
         <form className="productivity-form compact-form" onSubmit={(event) => {
           event.preventDefault()
@@ -704,15 +701,15 @@ function ProjectsView() {
           setComposing(false)
           if (id) setSelectedId(id)
         }}>
-          <label>项目名称<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：整理作品集" /></label>
+          <label>项目名称<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="作品集" /></label>
           <CategoryPicker value={category} onChange={setCategory} />
           <div className="form-grid">
             <label>规模<select value={size} onChange={(event) => setSize(event.target.value as ProjectSize)}>
-              <option value="small">小项目 · 120 金币 · 至少 2 步</option>
-              <option value="medium">中项目 · 300 金币 · 至少 4 步</option>
-              <option value="large">大项目 · 600 金币 · 至少 6 步</option>
+              <option value="small">小 · 120 金币 · 2 步起</option>
+              <option value="medium">中 · 300 金币 · 4 步起</option>
+              <option value="large">大 · 600 金币 · 6 步起</option>
             </select></label>
-            <label>截止日期（可选）<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
+            <label>截止（可选）<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
           </div>
           <div className="form-actions">
             <button className="btn" type="submit"><GameIcon name="plus" />新建</button>
@@ -728,7 +725,7 @@ function ProjectsView() {
       )}
 
       {current.length === 0 && completed.length === 0 ? (
-        <p className="inline-empty">把一件大事拆成几步，做完一步就算一步</p>
+        <p className="inline-empty">还没有项目</p>
       ) : (
         <div className="project-workspace">
           <div className="project-list" aria-label="项目列表">
@@ -745,9 +742,9 @@ function ProjectsView() {
                   <span>
                     {project.status === 'draft'
                       ? needed > 0
-                        ? `准备中 · 还差 ${needed} 步`
-                        : '准备中 · 可以开始'
-                      : `${progress.percent}% · 进行中`}
+                        ? `还差 ${needed} 步`
+                        : '可以开始'
+                      : `${progress.percent}%`}
                   </span>
                 </button>
               )
@@ -757,7 +754,7 @@ function ProjectsView() {
             <section className="project-detail">
               <div className="project-detail-heading">
                 <div>
-                  <span className="eyebrow">{PROJECT_SIZE_LABELS[selected.size]} · {reward.coins} 金币 · 至少 {reward.minBlocks} 步</span>
+                  <span className="eyebrow">{PROJECT_SIZE_LABELS[selected.size]} · {reward.coins} 金币</span>
                   <h3 className="task-title-with-category"><CategoryMark category={selected.category} />{selected.title}</h3>
                   {selected.dueDate && (
                     <p className={selected.dueDate < todayKey && selected.status !== 'completed' ? 'is-overdue' : ''}>
@@ -775,19 +772,9 @@ function ProjectsView() {
                   </span>
                 ))}
               </div>
-              {selected.status === 'draft' && (
-                <p className="project-hint">
-                  {remainingBlocks > 0
-                    ? `再加 ${remainingBlocks} 步就能开始，开始后会出现在今天`
-                    : '可以开始了。开始后按顺序做，下一步会出现在今天'}
-                </p>
-              )}
-              {selected.status === 'active' && nextBlock && (
-                <p className="project-hint">今天只推下一步：{nextBlock.title}</p>
-              )}
               <div className="project-blocks">
                 {selected.blocks.length === 0 && (
-                  <p className="inline-empty">先加两步，比如「列大纲」「写初稿」</p>
+                  <p className="inline-empty">先加两步</p>
                 )}
                 {selected.blocks.map((block, index) => {
                   const isNext = selected.status === 'active' && nextBlock?.id === block.id
@@ -829,7 +816,7 @@ function ProjectsView() {
                           <>
                             <button className="icon-button" disabled={index === 0} onClick={() => moveProjectBlock(selected.id, block.id, -1)} aria-label="上移">↑</button>
                             <button className="icon-button" disabled={index === selected.blocks.length - 1} onClick={() => moveProjectBlock(selected.id, block.id, 1)} aria-label="下移">↓</button>
-                            <button className="icon-button danger-text" onClick={() => deleteProjectBlock(selected.id, block.id)} aria-label="删除分块">×</button>
+                            <button className="icon-button danger-text" onClick={() => deleteProjectBlock(selected.id, block.id)} aria-label="删除这一步">×</button>
                           </>
                         )}
                       </div>
@@ -844,13 +831,10 @@ function ProjectsView() {
                   addProjectBlock(selected.id, blockTitle, blockDifficulty)
                   setBlockTitle('')
                 }}>
-                  <input value={blockTitle} onChange={(event) => setBlockTitle(event.target.value)} placeholder="加一步，比如：写开头" aria-label="分块标题" />
-                  <DifficultySelect value={blockDifficulty} onChange={setBlockDifficulty} label="分块大小" />
+                  <input value={blockTitle} onChange={(event) => setBlockTitle(event.target.value)} placeholder="加一步" aria-label="这一步" />
+                  <DifficultySelect value={blockDifficulty} onChange={setBlockDifficulty} label="这一步大小" />
                   <button className="btn" type="submit">添加</button>
                 </form>
-              )}
-              {selected.status === 'active' && (
-                <p className="project-hint">再加步会把剩下的奖励摊开</p>
               )}
               {selected.status === 'draft' && (
                 <div className="project-start">
@@ -859,20 +843,19 @@ function ProjectsView() {
                     disabled={selected.blocks.length < reward.minBlocks}
                     onClick={() => startProject(selected.id)}
                   >
-                    开始项目
+                    开始
                   </button>
                 </div>
               )}
               {selected.status === 'completed' && <p className="project-complete-note">收工了</p>}
               <button
                 className="quiet-remove project-remove"
-                title="从当前列表收起，进度和奖励会留着"
                 onClick={() => {
                   archiveProject(selected.id)
                   setSelectedId(null)
                 }}
               >
-                收进归档
+                收起
               </button>
             </section>
           )}
@@ -890,7 +873,7 @@ function ProjectsView() {
                 onClick={() => setSelectedId(project.id)}
               >
                 <strong className="task-title-with-category"><CategoryMark category={project.category} />{project.title}</strong>
-                <span>100% · 已完成</span>
+                <span>已完成</span>
               </button>
             ))}
           </div>

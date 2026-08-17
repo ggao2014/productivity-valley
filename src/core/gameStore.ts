@@ -977,7 +977,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       if (!project || project.status !== 'draft') return s
       const minimum = PROJECT_REWARDS[project.size].minBlocks
       if (project.blocks.length < minimum) {
-        return { ...s, toast: `至少需要 ${minimum} 个分块` }
+        return { ...s, toast: `至少 ${minimum} 步` }
       }
       return persist({
         ...s,
@@ -1079,7 +1079,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const project = s.projects.find((item) => item.id === projectId)
       const block = project?.blocks.find((item) => item.id === blockId)
       if (!project || !block?.done || !block.completedAt || localDayKey(new Date(block.completedAt)) !== localDayKey()) {
-        return { ...s, toast: '只能撤销今天完成的分块' }
+        return { ...s, toast: '只能撤销今天' }
       }
       return persist({
         ...s,
@@ -1096,7 +1096,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
               }
             : item,
         ),
-        toast: '已撤销进度，奖励不会重复发放',
+        toast: '已撤销',
       })
     }),
 
