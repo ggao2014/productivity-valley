@@ -2,7 +2,7 @@ import type { GameState } from './types'
 
 const KEY = 'productivity-valley-v1'
 const BACKUP_KEY = 'productivity-valley-backup-v1'
-const CURRENT_SCHEMA_VERSION = 17
+const CURRENT_SCHEMA_VERSION = 20
 
 type PersistedState = Omit<
   GameState,

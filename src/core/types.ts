@@ -172,6 +172,35 @@ export interface GiftItem {
   qty: number
 }
 
+export type ChoreFrequency = 'daily' | 'weekly' | 'monthly' | 'seasonal' | 'as-needed'
+
+export interface ChoreCompletion {
+  completedAt: string
+}
+
+export interface DailyChorePlan {
+  dayKey: string
+  choreIds: string[]
+}
+
+export interface ChorePreference {
+  title?: string
+  frequency?: ChoreFrequency
+  details?: string[]
+  enabled?: boolean
+  includeInToday?: boolean
+}
+
+export interface CustomChore {
+  id: string
+  roomId: string
+  title: string
+  frequency: ChoreFrequency
+  details: string[]
+  enabled: boolean
+  includeInToday: boolean
+}
+
 export interface GameState {
   facilityMigrationVersion: number
   coins: number
@@ -181,6 +210,10 @@ export interface GameState {
   projects: Project[]
   plans: PlanAssignment[]
   habitRewardSnapshots: Record<string, string[]>
+  choreCompletions: Record<string, ChoreCompletion>
+  chorePlan: DailyChorePlan
+  chorePreferences: Record<string, ChorePreference>
+  customChores: CustomChore[]
   rooms: RoomInstance[]
   courtyardLevel: CourtyardLevel
   npc: Record<string, NpcProgress>

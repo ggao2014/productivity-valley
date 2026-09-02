@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { buildDailyChorePlan, choreIsDue, configuredHomeRooms } from './household'
 import {
   BOND_DAILY_CAP,
   DAILY_LOGIN_BONUS,
@@ -89,6 +90,8 @@ import type {
   TaskCategory,
   CourtyardLevel,
   CourtyardLandscapeId,
+  ChorePreference,
+  ChoreFrequency,
 } from './types'
 
 function uid(): string {
@@ -173,6 +176,10 @@ function createInitial(): GameState {
     projects: [],
     plans: [],
     habitRewardSnapshots: {},
+    choreCompletions: {},
+    chorePlan: buildDailyChorePlan({}),
+    chorePreferences: {},
+    customChores: [],
     rooms: [
       { id: uid(), type: 'living', occupantId: null, level: 1 },
       { id: uid(), type: 'study', occupantId: null, level: 1 },
@@ -352,6 +359,11 @@ interface Actions {
   completeProjectBlock: (projectId: string, blockId: string) => void
   undoProjectBlock: (projectId: string, blockId: string) => void
   archiveProject: (id: string) => void
+  toggleChore: (id: string) => void
+  setChorePreference: (id: string, preference: ChorePreference) => void
+  addCustomChore: (roomId: string, title: string, frequency: ChoreFrequency) => void
+  deleteCustomChore: (id: string) => void
+  resetHouseholdSettings: () => void
   buyRoom: (type: RoomInstance['type']) => void
   upgradeCourtyard: () => void
   upgradeRoom: (id: string) => void
@@ -424,6 +436,12 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       rooms: normalizedRooms,
       courtyardLevel,
       habitRewardSnapshots: saved.habitRewardSnapshots ?? {},
+      choreCompletions: saved.choreCompletions ?? {},
+      chorePlan: saved.chorePlan?.dayKey === localDayKey()
+        ? saved.chorePlan
+        : buildDailyChorePlan(saved.choreCompletions ?? {}, new Date(), configuredHomeRooms(saved.chorePreferences, saved.customChores)),
+      chorePreferences: saved.chorePreferences ?? {},
+      customChores: saved.customChores ?? [],
       npc: mergeNpcProgress(saved.npc),
       milestones: saved.milestones ?? [],
       decorations: saved.decorations ?? [],
@@ -456,6 +474,33 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
   },
 
   setTab: (tab) => set({ tab }),
+  toggleChore: (id) => set((state) => {
+    const current = state.choreCompletions[id]
+    const definition = configuredHomeRooms(state.chorePreferences, state.customChores).flatMap((room) => room.chores).find((item) => item.id === id)
+    const isDone = definition ? !choreIsDue(definition.frequency, current?.completedAt) : Boolean(current)
+    const choreCompletions = { ...state.choreCompletions }
+    if (isDone) delete choreCompletions[id]
+    else choreCompletions[id] = { completedAt: new Date().toISOString() }
+    return persist({ ...state, choreCompletions, toast: isDone ? '已恢复为待清扫' : '房间又明亮了一点' })
+  }),
+  setChorePreference: (id, preference) => set((state) => {
+    const chorePreferences = { ...state.chorePreferences, [id]: preference }
+    const rooms = configuredHomeRooms(chorePreferences, state.customChores)
+    return persist({ ...state, chorePreferences, chorePlan: buildDailyChorePlan(state.choreCompletions, new Date(), rooms), toast: '家务设置已保存' })
+  }),
+  addCustomChore: (roomId, title, frequency) => set((state) => {
+    const item = { id: `custom-${uid()}`, roomId, title: title.trim(), frequency, details: [], enabled: true, includeInToday: frequency !== 'as-needed' }
+    const customChores = [...state.customChores, item]
+    const rooms = configuredHomeRooms(state.chorePreferences, customChores)
+    return persist({ ...state, customChores, chorePlan: buildDailyChorePlan(state.choreCompletions, new Date(), rooms), toast: '已添加家务' })
+  }),
+  deleteCustomChore: (id) => set((state) => {
+    const customChores = state.customChores.filter((item) => item.id !== id)
+    const choreCompletions = { ...state.choreCompletions }
+    delete choreCompletions[id]
+    return persist({ ...state, customChores, choreCompletions, chorePlan: buildDailyChorePlan(choreCompletions, new Date(), configuredHomeRooms(state.chorePreferences, customChores)), toast: '已删除自定义家务' })
+  }),
+  resetHouseholdSettings: () => set((state) => persist({ ...state, chorePreferences: {}, customChores: [], chorePlan: buildDailyChorePlan(state.choreCompletions), toast: '已恢复默认家务设置' })),
   selectNpc: (id) =>
     set((s) => {
       const closing = id === null
@@ -1542,6 +1587,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           .slice(0, HABIT_REWARD_SLOTS)
           .map((habit) => habit.id),
       }
+      const chorePlan = buildDailyChorePlan(s.choreCompletions, new Date(), configuredHomeRooms(s.chorePreferences, s.customChores))
 
       return persist({
         ...s,
@@ -1550,6 +1596,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         deficitDays,
         lastDailyKey: today,
         habitRewardSnapshots,
+        chorePlan,
         npc,
         toast,
       })

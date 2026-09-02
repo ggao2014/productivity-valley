@@ -33,6 +33,7 @@ import {
   roomTypeLimitReached,
 } from '../core/roomRules'
 import type { RoomInstance } from '../core/types'
+import { HouseholdPanel } from './HouseholdPanel'
 
 type BagMode = 'home' | 'storehouse' | 'settings'
 
@@ -60,7 +61,7 @@ export function BagPanel({ mode = 'storehouse', embedded = false }: { mode?: Bag
   const capacity = giftCapacity(state)
   const growthStage = valleyStage(state)
   const growthPoints = valleyGrowthPoints(state)
-  const [view, setView] = useState<'rooms' | 'decorations' | 'gifts' | 'settings'>(
+  const [view, setView] = useState<'rooms' | 'decorations' | 'gifts' | 'cleaning' | 'settings'>(
     mode === 'home' ? 'rooms' : mode === 'settings' ? 'settings' : 'gifts',
   )
   const [homeView, setHomeView] = useState<'build' | 'upgrade'>('build')
@@ -146,9 +147,12 @@ export function BagPanel({ mode = 'storehouse', embedded = false }: { mode?: Bag
       )}
 
       {mode === 'storehouse' && <nav className="bag-tabs" aria-label="库房分类">
+        <button className={view === 'gifts' ? 'active' : ''} aria-current={view === 'gifts' ? 'page' : undefined} onClick={() => setView('gifts')}>物资</button>
+        <button className={view === 'cleaning' ? 'active' : ''} aria-current={view === 'cleaning' ? 'page' : undefined} onClick={() => setView('cleaning')}>清扫</button>
         <button className={view === 'decorations' ? 'active' : ''} aria-current={view === 'decorations' ? 'page' : undefined} onClick={() => setView('decorations')}>装饰</button>
-        <button className={view === 'gifts' ? 'active' : ''} aria-current={view === 'gifts' ? 'page' : undefined} onClick={() => setView('gifts')}>礼物</button>
       </nav>}
+
+      {view === 'cleaning' && <div className="bag-tab-content"><HouseholdPanel /></div>}
 
       {mode === 'home' && embedded && <nav className="bag-tabs home-manage-tabs" aria-label="院宅管理">
         <button className={homeView === 'build' ? 'active' : ''} aria-current={homeView === 'build' ? 'page' : undefined} onClick={() => setHomeView('build')}>建设</button>

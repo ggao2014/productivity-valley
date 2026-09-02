@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { TodayChores } from './HouseholdPanel'
 import { GameIcon } from '../assets/icons/GameIcon'
 import { TASK_REWARDS } from '../core/constants'
 import { activeDayStreak, localDayKey, taskCompletedOn, todayTaskProgress } from '../core/economy'
@@ -201,6 +202,7 @@ function TodayView({
 
   return (
     <>
+      <TodayChores />
       <form className={`composer today-quick-add${onboardingStep === 1 ? ' guide-target' : ''}`} onSubmit={(event) => {
         event.preventDefault()
         if (!title.trim()) return

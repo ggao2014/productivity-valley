@@ -11,7 +11,7 @@ beforeEach(() => {
 })
 
 describe('versioned saves', () => {
-  it('writes schema v15 and excludes transient interface state', () => {
+  it('writes the current schema and excludes transient interface state', () => {
     const raw = serializeState(
       gameState({
         toast: 'temporary',
@@ -30,7 +30,7 @@ describe('versioned saves', () => {
       }),
     )
     const parsed = JSON.parse(raw)
-    expect(parsed.schemaVersion).toBe(17)
+    expect(parsed.schemaVersion).toBe(20)
     expect(parsed.state.toast).toBeUndefined()
     expect(parsed.state.selectedNpcId).toBeUndefined()
     expect(parsed.state.selectedRoomId).toBeUndefined()
