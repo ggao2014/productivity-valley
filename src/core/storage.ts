@@ -2,7 +2,7 @@ import type { GameState } from './types'
 
 const KEY = 'productivity-valley-v1'
 const BACKUP_KEY = 'productivity-valley-backup-v1'
-const CURRENT_SCHEMA_VERSION = 20
+const CURRENT_SCHEMA_VERSION = 21
 
 type PersistedState = Omit<
   GameState,
@@ -71,6 +71,24 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
   if (value.habits !== undefined && !Array.isArray(value.habits)) return false
   if (value.projects !== undefined && !Array.isArray(value.projects)) return false
   if (value.plans !== undefined && !Array.isArray(value.plans)) return false
+  if (
+    value.dayPreviews !== undefined &&
+    (!isRecord(value.dayPreviews) ||
+      !Object.entries(value.dayPreviews).every(([dayKey, preview]) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return false
+        if (!isRecord(preview)) return false
+        if (typeof preview.note !== 'string') return false
+        if (
+          preview.tone !== undefined &&
+          !['calm', 'busy', 'focus', 'away'].includes(String(preview.tone))
+        ) {
+          return false
+        }
+        return true
+      }))
+  ) {
+    return false
+  }
   if (
     value.courtyardLevel !== undefined &&
     ![1, 2, 3, 4].includes(Number(value.courtyardLevel))

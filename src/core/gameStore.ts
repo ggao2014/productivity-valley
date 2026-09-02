@@ -47,6 +47,11 @@ import {
   relativePlanDayLabel,
 } from './plan'
 import {
+  clearDayPreview,
+  dayPreviewLabel,
+  upsertDayPreview,
+} from './dayPreview'
+import {
   assignResident,
   canAddRoom,
   canUpgradeBedroomToCourtyard,
@@ -74,6 +79,7 @@ import {
 import type {
   DialogueKind,
   Difficulty,
+  DayPreviewTone,
   GameState,
   GiftReaction,
   NpcProgress,
@@ -175,6 +181,7 @@ function createInitial(): GameState {
     habits: [],
     projects: [],
     plans: [],
+    dayPreviews: {},
     habitRewardSnapshots: {},
     choreCompletions: {},
     chorePlan: buildDailyChorePlan({}),
@@ -347,6 +354,8 @@ interface Actions {
   undoCompleteTask: (id: string) => void
   deleteTask: (id: string) => void
   setPlan: (target: PlanTarget, slot: PlanSlot, dayKey?: string) => void
+  setDayPreview: (dayKey: string, note: string, tone?: DayPreviewTone | null) => void
+  clearDayPreviewMark: (dayKey: string) => void
   addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
   adjustHabit: (id: string, delta: number) => void
   archiveHabit: (id: string) => void
@@ -433,6 +442,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       habits: (saved.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
       projects: (saved.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
       plans: saved.plans ?? [],
+      dayPreviews: saved.dayPreviews ?? {},
       rooms: normalizedRooms,
       courtyardLevel,
       habitRewardSnapshots: saved.habitRewardSnapshots ?? {},
@@ -616,6 +626,8 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         tasks: (imported.tasks ?? []).map((task) => ({ ...task, category: task.category ?? 'errand' })),
         habits: (imported.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
         projects: (imported.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
+        plans: imported.plans ?? [],
+        dayPreviews: imported.dayPreviews ?? {},
         rooms: normalizedRooms,
         courtyardLevel,
         ...landscapes,
@@ -793,6 +805,34 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         toast,
       })
     })
+  },
+
+  setDayPreview: (dayKey, note, tone) => {
+    set((s) => {
+      const nextTone = tone === null ? undefined : tone
+      const dayPreviews = upsertDayPreview(s.dayPreviews ?? {}, dayKey, {
+        note,
+        tone: nextTone,
+      })
+      const hasMark = Boolean(dayPreviews[dayKey])
+      return persist({
+        ...s,
+        dayPreviews,
+        toast: hasMark
+          ? `已记下${dayPreviewLabel(dayKey)}`
+          : `已清空${dayPreviewLabel(dayKey)}`,
+      })
+    })
+  },
+
+  clearDayPreviewMark: (dayKey) => {
+    set((s) =>
+      persist({
+        ...s,
+        dayPreviews: clearDayPreview(s.dayPreviews ?? {}, dayKey),
+        toast: `已清空${dayPreviewLabel(dayKey)}`,
+      }),
+    )
   },
 
   addHabit: (title, mode, targetCount, schedule, category = 'errand') => {

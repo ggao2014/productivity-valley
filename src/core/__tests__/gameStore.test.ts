@@ -37,6 +37,21 @@ describe('built-in facility migration', () => {
   })
 })
 
+describe('day preview calendar', () => {
+  it('stores freeform day marks without requiring tasks', () => {
+    useGameStore.getState().setDayPreview('2026-09-04', '去看山', 'calm')
+    expect(useGameStore.getState().dayPreviews['2026-09-04']).toEqual({
+      note: '去看山',
+      tone: 'calm',
+    })
+    useGameStore.getState().setDayPreview('2026-09-04', '  ')
+    expect(useGameStore.getState().dayPreviews['2026-09-04']).toBeUndefined()
+    useGameStore.getState().setDayPreview('2026-09-05', '开会', 'busy')
+    useGameStore.getState().clearDayPreviewMark('2026-09-05')
+    expect(useGameStore.getState().dayPreviews).toEqual({})
+  })
+})
+
 describe('task rewards', () => {
   it('awards the configured reward without exceeding the energy cap', () => {
     useGameStore.setState(

@@ -76,6 +76,13 @@ export type TaskCategory = 'work' | 'study' | 'life' | 'health' | 'errand'
 
 export type PlanSlot = 'morning' | 'afternoon' | 'evening' | 'anytime'
 
+export type DayPreviewTone = 'calm' | 'busy' | 'focus' | 'away'
+
+export interface DayPreview {
+  note: string
+  tone?: DayPreviewTone
+}
+
 export type PlanTarget =
   | { kind: 'task'; id: string }
   | { kind: 'habit'; id: string }
@@ -209,6 +216,8 @@ export interface GameState {
   habits: Habit[]
   projects: Project[]
   plans: PlanAssignment[]
+  /** Optional day-level preview notes; independent of todos. */
+  dayPreviews: Record<string, DayPreview>
   habitRewardSnapshots: Record<string, string[]>
   choreCompletions: Record<string, ChoreCompletion>
   chorePlan: DailyChorePlan
