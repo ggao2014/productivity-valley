@@ -4576,28 +4576,28 @@ button {
 }
 .timeline-row .row-main { gap: 4px; }
 
-/* Preview calendar: independent day marks */
-.preview-calendar {
+/* Preview timetable: weekday × slot, no calendar dates */
+.preview-timetable {
   display: grid;
   gap: 14px;
 }
-.preview-calendar-head {
+.preview-timetable-head {
   display: flex;
   align-items: start;
   justify-content: space-between;
   gap: 12px;
 }
-.preview-calendar-head h2 {
+.preview-timetable-head h2 {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.2rem;
 }
-.preview-calendar-head p {
+.preview-timetable-head p {
   margin: 4px 0 0;
   color: var(--ink-soft);
   font-size: .82rem;
 }
-.preview-calendar-head > span {
+.preview-timetable-head > span {
   flex: none;
   padding: 4px 8px;
   border-radius: 999px;
@@ -4606,90 +4606,159 @@ button {
   font-size: .72rem;
   white-space: nowrap;
 }
-.preview-calendar-nav {
+.preview-timetable-modes {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(96, 73, 45, .16);
+  border-radius: 12px;
+  background: rgba(255, 250, 237, .72);
 }
-.preview-calendar-nav strong {
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-}
-.preview-calendar-nav .quiet-today {
+.preview-timetable-modes button {
   border: 0;
-  padding: 4px 2px;
-  color: var(--moss-deep);
+  border-radius: 9px;
+  padding: 8px;
+  color: var(--ink-soft);
   background: transparent;
   font: inherit;
-  font-size: .78rem;
   font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 3px;
   cursor: pointer;
 }
-.preview-calendar-nav .quiet-today:hover {
-  text-decoration-color: currentColor;
+.preview-timetable-modes button.active {
+  color: #fff;
+  background: var(--moss-deep);
 }
-.preview-calendar-weekdays,
-.preview-calendar-grid {
+.timetable-week {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 5px;
 }
-.preview-calendar-weekdays span {
+.timetable-week-head,
+.timetable-week-row {
+  display: grid;
+  grid-template-columns: 42px repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  align-items: stretch;
+}
+.timetable-week-head span {
   text-align: center;
   color: var(--ink-soft);
   font-size: .72rem;
   font-weight: 700;
 }
-.preview-day {
-  position: relative;
+.timetable-corner { visibility: hidden; }
+.timetable-slot-label {
   display: grid;
   place-items: center;
-  aspect-ratio: 1;
-  min-height: 40px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  color: var(--ink);
-  background: transparent;
+  color: var(--ink-soft);
+  font-size: .68rem;
+  font-weight: 700;
+  writing-mode: horizontal-tb;
+}
+.timetable-cell {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  padding: 4px;
+  border: 1px solid rgba(96, 73, 45, .14);
+  border-radius: 10px;
+  color: var(--ink-soft);
+  background: rgba(255, 253, 247, .55);
   font: inherit;
   cursor: pointer;
 }
-.preview-day.is-pad {
-  pointer-events: none;
-  visibility: hidden;
+.timetable-cell span {
+  font-size: .9rem;
+  opacity: .35;
 }
-.preview-day b {
-  font-variant-numeric: tabular-nums;
+.timetable-cell b {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: .68rem;
   font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
-.preview-day i {
-  position: absolute;
-  bottom: 6px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--moss);
-}
-.preview-day i[data-tone='calm'] { background: #6f8f72; }
-.preview-day i[data-tone='busy'] { background: #c46a45; }
-.preview-day i[data-tone='focus'] { background: #4f6f8f; }
-.preview-day i[data-tone='away'] { background: #8a7358; }
-.preview-day.is-today {
+.timetable-cell.has-mark {
   border-color: rgba(92, 122, 90, .28);
-  background: rgba(222, 237, 211, .45);
+  background: rgba(222, 237, 211, .42);
 }
-.preview-day.is-selected {
+.timetable-cell[data-tone='calm'].has-mark { background: rgba(111, 143, 114, .18); }
+.timetable-cell[data-tone='busy'].has-mark { background: rgba(196, 106, 69, .16); }
+.timetable-cell[data-tone='focus'].has-mark { background: rgba(79, 111, 143, .16); }
+.timetable-cell[data-tone='away'].has-mark { background: rgba(138, 115, 88, .16); }
+.timetable-cell.is-selected {
   border-color: rgba(63, 90, 64, .55);
-  background: rgba(222, 237, 211, .78);
   box-shadow: inset 0 0 0 1px rgba(63, 90, 64, .12);
 }
-.preview-day.has-mark:not(.is-selected) {
-  background: rgba(255, 252, 244, .7);
+.timetable-day {
+  display: grid;
+  gap: 12px;
 }
+.timetable-day-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.timetable-day-picker button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(96, 73, 45, .24);
+  border-radius: 50%;
+  color: var(--ink-soft);
+  background: #fffdf7;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.timetable-day-picker button.active {
+  color: #fff;
+  border-color: var(--moss-deep);
+  background: var(--moss-deep);
+}
+.timetable-day-slots {
+  display: grid;
+  gap: 8px;
+}
+.timetable-day-slot {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(96, 73, 45, .16);
+  border-radius: 14px;
+  text-align: left;
+  color: var(--ink);
+  background: rgba(255, 253, 247, .66);
+  font: inherit;
+  cursor: pointer;
+}
+.timetable-day-slot > span {
+  color: var(--moss-deep);
+  font-size: .72rem;
+  font-weight: 800;
+}
+.timetable-day-slot strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+.timetable-day-slot:not(.has-mark) strong {
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: .9rem;
+  font-weight: 400;
+}
+.timetable-day-slot.is-selected {
+  border-color: rgba(63, 90, 64, .55);
+  background: rgba(222, 237, 211, .55);
+}
+.timetable-day-slot[data-tone='calm'].has-mark { background: rgba(111, 143, 114, .16); }
+.timetable-day-slot[data-tone='busy'].has-mark { background: rgba(196, 106, 69, .14); }
+.timetable-day-slot[data-tone='focus'].has-mark { background: rgba(79, 111, 143, .14); }
+.timetable-day-slot[data-tone='away'].has-mark { background: rgba(138, 115, 88, .14); }
 .preview-day-editor {
   display: grid;
   gap: 10px;
@@ -4709,7 +4778,6 @@ button {
 .preview-day-editor-head span {
   color: var(--ink-soft);
   font-size: .72rem;
-  font-variant-numeric: tabular-nums;
 }
 .preview-note-field {
   display: grid;
@@ -4765,7 +4833,10 @@ button {
 @media (max-width: 700px) {
   .productivity-tabs { gap: 4px; padding: 4px; }
   .productivity-tabs button { padding: 9px 4px; font-size: .82rem; }
-  .preview-day { min-height: 36px; border-radius: 10px; }
+  .timetable-week-head,
+  .timetable-week-row { grid-template-columns: 36px repeat(7, minmax(0, 1fr)); gap: 3px; }
+  .timetable-cell { min-height: 46px; border-radius: 8px; }
+  .timetable-cell b { font-size: .62rem; }
 }
 
 @media (max-width: 520px) {

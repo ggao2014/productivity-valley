@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { PreviewCalendar } from './PreviewCalendar'
+import { PreviewTimetable } from './PreviewTimetable'
 import { TodayChores } from './HouseholdPanel'
 import { GameIcon } from '../assets/icons/GameIcon'
 import { TASK_REWARDS } from '../core/constants'
@@ -42,7 +42,7 @@ import type {
 } from '../core/types'
 import { TASK_CATEGORIES, taskCategory } from '../core/taskCategories'
 
-type TaskView = 'today' | 'calendar' | 'habits' | 'projects'
+type TaskView = 'today' | 'timetable' | 'habits' | 'projects'
 
 const WEEKDAYS = [
   { value: 1, label: '一' },
@@ -112,7 +112,7 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
       </header>
       <nav className="productivity-tabs" aria-label="任务分类">
         <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')}>今天</button>
-        <button className={view === 'calendar' ? 'active' : ''} onClick={() => setView('calendar')}>日历</button>
+        <button className={view === 'timetable' ? 'active' : ''} onClick={() => setView('timetable')}>时间表</button>
         <button className={view === 'habits' ? 'active' : ''} onClick={() => setView('habits')}>习惯</button>
         <button className={view === 'projects' ? 'active' : ''} onClick={() => setView('projects')}>项目</button>
       </nav>
@@ -129,7 +129,7 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
         />
         </>
       )}
-      {view === 'calendar' && <PreviewCalendar />}
+      {view === 'timetable' && <PreviewTimetable />}
       {view === 'habits' && <HabitsView rewardedHabitIds={rewardedHabitIds} />}
       {view === 'projects' && <ProjectsView />}
     </div>

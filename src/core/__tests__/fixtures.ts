@@ -31,7 +31,7 @@ export function gameState(overrides: Partial<GameState> = {}): GameState {
     habits: [],
     projects: [],
     plans: [],
-    dayPreviews: {},
+    timetable: {},
     habitRewardSnapshots: {},
     choreCompletions: {},
     chorePlan: { dayKey: '2026-07-30', choreIds: [] },

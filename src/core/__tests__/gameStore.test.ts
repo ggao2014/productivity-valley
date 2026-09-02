@@ -37,18 +37,18 @@ describe('built-in facility migration', () => {
   })
 })
 
-describe('day preview calendar', () => {
-  it('stores freeform day marks without requiring tasks', () => {
-    useGameStore.getState().setDayPreview('2026-09-04', '去看山', 'calm')
-    expect(useGameStore.getState().dayPreviews['2026-09-04']).toEqual({
-      note: '去看山',
-      tone: 'calm',
+describe('preview timetable', () => {
+  it('stores freeform weekday-slot marks without dates or tasks', () => {
+    useGameStore.getState().setTimetableCell(1, 'morning', '写材料', 'focus')
+    expect(useGameStore.getState().timetable['1:morning']).toEqual({
+      title: '写材料',
+      tone: 'focus',
     })
-    useGameStore.getState().setDayPreview('2026-09-04', '  ')
-    expect(useGameStore.getState().dayPreviews['2026-09-04']).toBeUndefined()
-    useGameStore.getState().setDayPreview('2026-09-05', '开会', 'busy')
-    useGameStore.getState().clearDayPreviewMark('2026-09-05')
-    expect(useGameStore.getState().dayPreviews).toEqual({})
+    useGameStore.getState().setTimetableCell(1, 'morning', '  ')
+    expect(useGameStore.getState().timetable['1:morning']).toBeUndefined()
+    useGameStore.getState().setTimetableCell(5, 'evening', '出门', 'away')
+    useGameStore.getState().clearTimetableMark(5, 'evening')
+    expect(useGameStore.getState().timetable).toEqual({})
   })
 })
 

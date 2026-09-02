@@ -76,11 +76,14 @@ export type TaskCategory = 'work' | 'study' | 'life' | 'health' | 'errand'
 
 export type PlanSlot = 'morning' | 'afternoon' | 'evening' | 'anytime'
 
-export type DayPreviewTone = 'calm' | 'busy' | 'focus' | 'away'
+/** Freeform week timetable marks — not tied to calendar dates or todos. */
+export type TimetableWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
+export type TimetableSlot = 'morning' | 'afternoon' | 'evening'
+export type TimetableTone = 'calm' | 'busy' | 'focus' | 'away'
 
-export interface DayPreview {
-  note: string
-  tone?: DayPreviewTone
+export interface TimetableCell {
+  title: string
+  tone?: TimetableTone
 }
 
 export type PlanTarget =
@@ -216,8 +219,8 @@ export interface GameState {
   habits: Habit[]
   projects: Project[]
   plans: PlanAssignment[]
-  /** Optional day-level preview notes; independent of todos. */
-  dayPreviews: Record<string, DayPreview>
+  /** Weekday × slot preview grid; independent of todos and calendar dates. */
+  timetable: Record<string, TimetableCell>
   habitRewardSnapshots: Record<string, string[]>
   choreCompletions: Record<string, ChoreCompletion>
   chorePlan: DailyChorePlan

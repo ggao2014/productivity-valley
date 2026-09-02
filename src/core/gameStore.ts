@@ -47,10 +47,10 @@ import {
   relativePlanDayLabel,
 } from './plan'
 import {
-  clearDayPreview,
-  dayPreviewLabel,
-  upsertDayPreview,
-} from './dayPreview'
+  clearTimetableCell,
+  timetableCellLabel,
+  upsertTimetableCell,
+} from './timetable'
 import {
   assignResident,
   canAddRoom,
@@ -79,7 +79,6 @@ import {
 import type {
   DialogueKind,
   Difficulty,
-  DayPreviewTone,
   GameState,
   GiftReaction,
   NpcProgress,
@@ -98,6 +97,9 @@ import type {
   CourtyardLandscapeId,
   ChorePreference,
   ChoreFrequency,
+  TimetableSlot,
+  TimetableTone,
+  TimetableWeekday,
 } from './types'
 
 function uid(): string {
@@ -181,7 +183,7 @@ function createInitial(): GameState {
     habits: [],
     projects: [],
     plans: [],
-    dayPreviews: {},
+    timetable: {},
     habitRewardSnapshots: {},
     choreCompletions: {},
     chorePlan: buildDailyChorePlan({}),
@@ -354,8 +356,13 @@ interface Actions {
   undoCompleteTask: (id: string) => void
   deleteTask: (id: string) => void
   setPlan: (target: PlanTarget, slot: PlanSlot, dayKey?: string) => void
-  setDayPreview: (dayKey: string, note: string, tone?: DayPreviewTone | null) => void
-  clearDayPreviewMark: (dayKey: string) => void
+  setTimetableCell: (
+    weekday: TimetableWeekday,
+    slot: TimetableSlot,
+    title: string,
+    tone?: TimetableTone | null,
+  ) => void
+  clearTimetableMark: (weekday: TimetableWeekday, slot: TimetableSlot) => void
   addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
   adjustHabit: (id: string, delta: number) => void
   archiveHabit: (id: string) => void
@@ -442,7 +449,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       habits: (saved.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
       projects: (saved.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
       plans: saved.plans ?? [],
-      dayPreviews: saved.dayPreviews ?? {},
+      timetable: saved.timetable ?? {},
       rooms: normalizedRooms,
       courtyardLevel,
       habitRewardSnapshots: saved.habitRewardSnapshots ?? {},
@@ -627,7 +634,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         habits: (imported.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
         projects: (imported.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
         plans: imported.plans ?? [],
-        dayPreviews: imported.dayPreviews ?? {},
+        timetable: imported.timetable ?? {},
         rooms: normalizedRooms,
         courtyardLevel,
         ...landscapes,
@@ -807,30 +814,31 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     })
   },
 
-  setDayPreview: (dayKey, note, tone) => {
+  setTimetableCell: (weekday, slot, title, tone) => {
     set((s) => {
       const nextTone = tone === null ? undefined : tone
-      const dayPreviews = upsertDayPreview(s.dayPreviews ?? {}, dayKey, {
-        note,
+      const timetable = upsertTimetableCell(s.timetable ?? {}, weekday, slot, {
+        title,
         tone: nextTone,
       })
-      const hasMark = Boolean(dayPreviews[dayKey])
+      const key = `${weekday}:${slot}`
+      const hasMark = Boolean(timetable[key])
       return persist({
         ...s,
-        dayPreviews,
+        timetable,
         toast: hasMark
-          ? `已记下${dayPreviewLabel(dayKey)}`
-          : `已清空${dayPreviewLabel(dayKey)}`,
+          ? `已记下${timetableCellLabel(weekday, slot)}`
+          : `已清空${timetableCellLabel(weekday, slot)}`,
       })
     })
   },
 
-  clearDayPreviewMark: (dayKey) => {
+  clearTimetableMark: (weekday, slot) => {
     set((s) =>
       persist({
         ...s,
-        dayPreviews: clearDayPreview(s.dayPreviews ?? {}, dayKey),
-        toast: `已清空${dayPreviewLabel(dayKey)}`,
+        timetable: clearTimetableCell(s.timetable ?? {}, weekday, slot),
+        toast: `已清空${timetableCellLabel(weekday, slot)}`,
       }),
     )
   },

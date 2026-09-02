@@ -2,7 +2,7 @@ import type { GameState } from './types'
 
 const KEY = 'productivity-valley-v1'
 const BACKUP_KEY = 'productivity-valley-backup-v1'
-const CURRENT_SCHEMA_VERSION = 21
+const CURRENT_SCHEMA_VERSION = 22
 
 type PersistedState = Omit<
   GameState,
@@ -72,15 +72,15 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
   if (value.projects !== undefined && !Array.isArray(value.projects)) return false
   if (value.plans !== undefined && !Array.isArray(value.plans)) return false
   if (
-    value.dayPreviews !== undefined &&
-    (!isRecord(value.dayPreviews) ||
-      !Object.entries(value.dayPreviews).every(([dayKey, preview]) => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return false
-        if (!isRecord(preview)) return false
-        if (typeof preview.note !== 'string') return false
+    value.timetable !== undefined &&
+    (!isRecord(value.timetable) ||
+      !Object.entries(value.timetable).every(([key, cell]) => {
+        if (!/^[0-6]:(morning|afternoon|evening)$/.test(key)) return false
+        if (!isRecord(cell)) return false
+        if (typeof cell.title !== 'string') return false
         if (
-          preview.tone !== undefined &&
-          !['calm', 'busy', 'focus', 'away'].includes(String(preview.tone))
+          cell.tone !== undefined &&
+          !['calm', 'busy', 'focus', 'away'].includes(String(cell.tone))
         ) {
           return false
         }
