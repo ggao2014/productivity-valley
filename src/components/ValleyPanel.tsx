@@ -71,7 +71,6 @@ function FacilityBuilding({
   label,
   actionLabel,
   onOpen,
-  onDetails,
 }: {
   room: RoomInstance
   kind: 'study' | 'storage'
@@ -79,7 +78,6 @@ function FacilityBuilding({
   label: string
   actionLabel?: string
   onOpen: () => void
-  onDetails: () => void
 }) {
   const position = FACILITY_POSITIONS[courtyardLevel][kind]
   const level = room.level ?? 1
@@ -92,7 +90,6 @@ function FacilityBuilding({
         <img src={publicAsset(roomExteriorAsset(kind, level))} alt="" draggable={false} />
         <span>{label}</span>
       </button>
-      <button className="room-level-mark facility-level-action" onClick={onDetails} aria-label={`查看${label}等级`}>{level}</button>
     </div>
   )
 }
@@ -249,7 +246,6 @@ export function ValleyPanel({
               aria-label={`院居，${roomResidentCount(compoundBedroom)}/3 人，点击查看`}
             >
               <img src={publicAsset(ROOM_EXTERIOR_ASSETS.bedroom[4])} alt="" draggable={false} />
-              <i className="room-level-mark" aria-hidden="true">4</i>
               <span>院居 · {roomResidentCount(compoundBedroom)}/3</span>
             </button>
           )}
@@ -263,14 +259,13 @@ export function ValleyPanel({
               />
               <span>正房</span>
             </button>
-            <button className="room-level-mark facility-level-action" onClick={() => selectRoom(livingRoom.id)} aria-label="查看正房等级">{livingRoom.level ?? 1}</button>
             </div>
           )}
           {studyRoom && (
-            <FacilityBuilding room={studyRoom} kind="study" courtyardLevel={state.courtyardLevel} label="书房" actionLabel="打开书房手册" onOpen={onOpenHandbook} onDetails={() => selectRoom(studyRoom.id)} />
+            <FacilityBuilding room={studyRoom} kind="study" courtyardLevel={state.courtyardLevel} label="书房" actionLabel="打开书房手册" onOpen={onOpenHandbook} />
           )}
           {storageRoom && (
-            <FacilityBuilding room={storageRoom} kind="storage" courtyardLevel={state.courtyardLevel} label="库房" onOpen={onOpenStorehouse} onDetails={() => selectRoom(storageRoom.id)} />
+            <FacilityBuilding room={storageRoom} kind="storage" courtyardLevel={state.courtyardLevel} label="库房" onOpen={onOpenStorehouse} />
           )}
           {standardRooms.slice(0, courtyard.slots.length).map((room, index) => {
             const level = room.level ?? 1
@@ -302,7 +297,6 @@ export function ValleyPanel({
                 aria-label={`${displayName}，点击查看`}
               >
                 <img src={publicAsset(image)} alt="" draggable={false} />
-                <i className="room-level-mark" aria-hidden="true">{level}</i>
                 <span>{displayName}</span>
               </button>
             )

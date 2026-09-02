@@ -1460,23 +1460,7 @@ button {
   width: 23%;
 }
 
-.facility-level-action {
-  right: -10px;
-  top: -8px;
-  z-index: 3;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
 .facility-main-action { z-index: 1; }
-
-.facility-building.level-1 .facility-level-action { opacity: .68; }
-
-@media (max-width: 640px) {
-  .facility-level-action { pointer-events: none; }
-}
 
 .facility-overlay {
   position: fixed;
@@ -1568,32 +1552,6 @@ button {
 .room-module.compound-bedroom {
   filter: drop-shadow(0 5px 4px rgba(58, 50, 44, .24));
 }
-
-.room-module.compound-bedroom .room-level-mark {
-  right: 10%;
-  top: 34%;
-}
-
-.room-level-mark {
-  position: absolute;
-  right: 5%;
-  top: 4%;
-  display: grid;
-  place-items: center;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  color: #fffaf0;
-  background: rgba(73, 58, 41, .72);
-  font-size: .58rem;
-  font-style: normal;
-  font-weight: 800;
-}
-
-.level-2 .room-level-mark { background: rgba(67, 101, 65, .82); }
-.level-3 .room-level-mark { color: #5e3b17; background: #e5c36d; }
-.level-4 .room-level-mark { color: #fff9e4; background: #7d5131; }
-.level-1 .room-level-mark { opacity: 0; }
 
 .courtyard-overflow {
   position: absolute;
@@ -2405,22 +2363,9 @@ button {
 .floor-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 4px; border-radius: 12px; background: rgba(73, 91, 62, .09); }
 .floor-tabs button { border: 0; border-radius: 9px; padding: 8px; color: var(--ink-soft); background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
 .floor-tabs button.active { color: #fff; background: var(--moss-deep); box-shadow: 0 2px 6px rgba(44, 70, 45, .22); }
-.home-map { position: relative; min-height: 340px; padding: 10px; border: 2px solid rgba(92, 75, 50, .24); border-radius: 9px 28px 9px 9px; background: linear-gradient(135deg, rgba(249, 242, 220, .96), rgba(232, 226, 198, .86)); box-shadow: inset 0 0 0 5px rgba(255,255,255,.38); }
-.map-room { position: absolute; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-width: 0; border: 1px solid rgba(83, 68, 45, .3); border-radius: 5px; padding: 10px; color: var(--ink); background: rgba(177, 166, 127, .38); cursor: pointer; transition: transform .18s, background .18s, box-shadow .18s; }
-.map-room:hover { z-index: 2; transform: translateY(-2px); box-shadow: 0 6px 14px rgba(63, 54, 35, .16); }
-.map-room.is-clean { border-color: rgba(57, 111, 68, .42); background: rgba(145, 190, 126, .5); box-shadow: inset 0 0 18px rgba(255, 245, 174, .35); }
-.map-room strong { line-height: 1.15; text-align: left; }
-.map-room span { color: var(--moss-deep); font-size: 1.2rem; font-weight: 800; }
-.map-room small { color: var(--muted); font-size: .66rem; }
-.home-map-first .map-room-living-dining { left: 7%; right: 7%; bottom: 5%; height: 43%; }
-.home-map-first .map-room-kitchen { left: 7%; top: 5%; width: 58%; height: 42%; }
-.home-map-first .map-room-powder-room { right: 7%; top: 5%; width: 24%; height: 42%; }
-.home-map-second .map-room-primary-suite { left: 6%; right: 6%; bottom: 5%; height: 34%; }
-.home-map-second .map-room-study { left: 6%; top: 5%; width: 38%; height: 51%; }
-.home-map-second .map-room-guest-bedroom { right: 6%; top: 5%; width: 29%; height: 28%; }
-.home-map-second .map-room-guest-bath { right: 6%; top: 35%; width: 29%; height: 21%; }
-.home-map-second .map-room-laundry { left: 46%; top: 5%; width: 17%; height: 51%; padding: 6px; }
-.home-map-second .map-room-laundry strong { font-size: .78rem; }
+.home-map { position: relative; }
+.map-room { position: absolute; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; color: var(--ink); cursor: pointer; transition: transform .18s, background .18s, box-shadow .18s; }
+.map-room:hover { z-index: 2; }
 .basement-note { margin: -5px 0 0; color: var(--muted); font-size: .73rem; text-align: center; }
 .room-chore-sheet { display: grid; gap: 10px; padding: 14px; border: 1px solid rgba(87, 71, 46, .18); border-radius: 14px; background: rgba(255, 252, 241, .8); }
 .room-chore-sheet > header { display: flex; align-items: center; justify-content: space-between; }
@@ -2450,10 +2395,6 @@ button {
 .today-chore-list small { color: var(--muted); }
 .today-chores-more { width: 100%; border: 0; padding: 7px; color: var(--moss-deep); background: rgba(87, 117, 75, .07); font: inherit; font-size: .75rem; cursor: pointer; }
 @media (max-width: 460px) {
-  .home-map { min-height: 310px; }
-  .map-room { padding: 7px; }
-  .map-room strong { font-size: .76rem; }
-  .map-room small { font-size: .61rem; }
   .chore-list ul { columns: 1; }
 }
 
@@ -2469,49 +2410,74 @@ button {
 .household-heading-actions > button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(73,91,62,.16); border-radius: 10px; color: var(--ink-soft); background: rgba(255,255,255,.5); font-size: .9rem; cursor: pointer; }
 .household-heading-actions > button:hover, .household-heading-actions > button.is-active { color: #fff; background: var(--moss-deep); }
 .floor-tabs { width: min(330px, 80%); margin: 0 auto; border: 1px solid rgba(70,91,60,.11); background: rgba(73,91,62,.07); }
-.home-map-frame { padding: 10px 10px 16px; border: 1px solid rgba(93,76,51,.14); border-radius: 20px; background: linear-gradient(155deg, rgba(255,253,242,.9), rgba(237,230,207,.74)); box-shadow: 0 12px 30px rgba(64,52,34,.1), inset 0 1px rgba(255,255,255,.9); }
-.map-caption { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 9px; color: #897a60; font-size: .61rem; letter-spacing: .14em; }
-.map-caption small { display: flex; align-items: center; gap: 4px; letter-spacing: 0; }
+.home-map-frame { padding: 10px 10px 16px; overflow: visible; border: 1px solid rgba(93,76,51,.14); border-radius: 20px; background: linear-gradient(155deg, rgba(255,253,242,.9), rgba(237,230,207,.74)); box-shadow: 0 12px 30px rgba(64,52,34,.1), inset 0 1px rgba(255,255,255,.9); }
+.map-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 4px 9px; color: #897a60; font-size: .61rem; letter-spacing: .08em; }
+.map-caption > span { min-width: 0; overflow-wrap: anywhere; }
+.map-caption small { display: flex; flex-shrink: 0; align-items: center; gap: 4px; letter-spacing: 0; }
 .map-caption i { width: 7px; height: 7px; border-radius: 50%; background: #9fbe8d; }
 .map-caption i:last-of-type { margin-left: 5px; background: #d9c9a5; }
-.home-map { width: min(430px, 92%); min-height: 460px; margin: 0 auto; padding: 0; overflow: visible; border: 3px double rgba(77,66,47,.48); border-radius: 3px 22px 3px 3px; background-color: #f6f0dc; background-image: linear-gradient(rgba(91,76,51,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(91,76,51,.025) 1px, transparent 1px), radial-gradient(circle at 30% 15%, rgba(255,255,255,.8), transparent 40%); background-size: 12px 12px, 12px 12px, 100% 100%; box-shadow: 0 9px 25px rgba(62,53,38,.15), inset 0 0 0 6px rgba(255,255,255,.42); }
-.map-room { box-sizing: border-box; overflow: hidden; justify-content: flex-end; gap: 1px; border: 1.5px solid rgba(86,71,49,.38); border-radius: 2px; padding: 11px 12px; background: linear-gradient(145deg, rgba(222,210,174,.72), rgba(200,187,151,.5)); box-shadow: inset 0 0 20px rgba(93,75,47,.05); }
+.home-map { width: min(430px, 92%); min-height: 440px; margin: 0 auto; padding: 14px 8px 20px; overflow: hidden; border: 3px double rgba(77,66,47,.48); border-radius: 3px 22px 3px 3px; background-color: #f6f0dc; background-image: linear-gradient(rgba(91,76,51,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(91,76,51,.025) 1px, transparent 1px), radial-gradient(circle at 30% 15%, rgba(255,255,255,.8), transparent 40%); background-size: 12px 12px, 12px 12px, 100% 100%; box-shadow: 0 9px 25px rgba(62,53,38,.15); }
+.map-room { box-sizing: border-box; overflow: visible; justify-content: flex-start; gap: 0; border: 1.5px solid rgba(86,71,49,.38); border-radius: 2px; padding: 12px 8px 7px; background: linear-gradient(145deg, rgba(222,210,174,.72), rgba(200,187,151,.5)); box-shadow: inset 0 0 20px rgba(93,75,47,.05); }
 .map-room::before { content: ''; position: absolute; inset: 0; opacity: .22; background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(97,79,49,.12) 19px 20px); pointer-events: none; }
 .map-room::after { content: ''; position: absolute; top: -1px; left: 18%; width: 18px; height: 9px; border: 1px solid rgba(80,66,47,.35); border-top: 0; border-radius: 0 0 18px 0; background: #f6f0dc; }
 .map-room:hover, .map-room.is-selected { z-index: 3; transform: translateY(-2px) scale(1.012); border-color: rgba(53,91,62,.64); box-shadow: 0 8px 18px rgba(56,70,44,.18), inset 0 0 22px rgba(255,250,210,.28); }
 .map-room.is-clean { border-color: rgba(68,112,72,.48); background: linear-gradient(145deg, rgba(198,224,173,.86), rgba(143,189,132,.58)); box-shadow: inset 0 0 28px rgba(255,249,181,.46), 0 0 15px rgba(134,177,109,.12); }
-.map-room strong, .map-room .room-state, .map-room small, .room-glyph { position: relative; z-index: 1; }
-.map-room strong { font-family: var(--serif); font-size: .82rem; font-weight: 750; }
-.map-room strong, .map-room small { max-width: 100%; overflow-wrap: anywhere; }
-.map-room .room-state { color: #355b3f; font: 850 1.28rem/1 var(--sans); letter-spacing: -.04em; }
-.map-room small { color: rgba(72,64,51,.7); }
-.room-glyph { position: absolute; top: 10px; right: 10px; color: rgba(68,91,58,.42); font: 400 1.3rem/1 var(--serif); }
-.map-ghost { box-sizing: border-box; position: absolute; z-index: 0; display: grid; place-items: center; border: 1px dashed rgba(88,73,51,.25); color: rgba(91,76,54,.48); background: repeating-linear-gradient(135deg, rgba(109,89,55,.035) 0 5px, transparent 5px 10px); font: 650 .58rem/1.6 var(--sans); text-align: center; letter-spacing: .08em; }
-.map-stairs { box-sizing: border-box; position: absolute; z-index: 1; display: grid; place-items: center; border: 1px solid rgba(87,73,50,.25); color: rgba(82,70,52,.55); background: repeating-linear-gradient(0deg, rgba(88,72,49,.14) 0 1px, transparent 1px 6px); font-size: .58rem; writing-mode: vertical-rl; letter-spacing: .18em; }
-.map-compass { position: absolute; top: -22px; right: -2px; color: rgba(74,81,55,.55); font: 700 .55rem/1 var(--serif); }
+.map-room .room-copy, .map-room strong, .map-room .room-state, .room-glyph { position: relative; z-index: 1; }
+.map-room .room-copy { display: flex; flex-direction: column; justify-content: center; gap: 3px; width: 100%; min-width: 0; height: 100%; }
+.map-room strong { max-width: 100%; color: var(--ink); font-family: var(--serif); font-size: .8rem; font-weight: 750; line-height: 1.15; overflow-wrap: anywhere; }
+.map-room .room-state { color: #355b3f; font: 850 1.02rem/1 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing: -.04em; }
+.map-room.is-compact { padding: 10px 6px 5px; }
+.map-room.is-compact .room-copy { justify-content: center; gap: 2px; }
+.map-room.is-compact strong { font-size: .68rem; }
+.map-room.is-compact .room-state { font-size: .84rem; }
+.map-room.is-compact::after { display: none; }
+.room-glyph { position: absolute; top: 10px; right: 10px; color: rgba(68,91,58,.42); font: 400 1.05rem/1 var(--serif); }
+.map-room > .room-due {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+  display: block;
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(45,70,40,.25));
+}
+.map-room.is-compact > .room-due {
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+}
+.map-room > .room-due text {
+  font-variant-numeric: tabular-nums;
+}
+.map-ghost { box-sizing: border-box; position: absolute; z-index: 0; display: grid; place-items: center; border: 1px dashed rgba(88,73,51,.25); color: rgba(91,76,54,.48); background: repeating-linear-gradient(135deg, rgba(109,89,55,.035) 0 5px, transparent 5px 10px); font: 650 .55rem/1.15 var(--sans); text-align: center; letter-spacing: 0; padding: 4px; overflow: hidden; }
+.map-stairs { box-sizing: border-box; position: absolute; z-index: 1; display: grid; place-items: center; padding: 10px 0; border: 1px solid rgba(87,73,50,.25); color: rgba(82,70,52,.55); background: repeating-linear-gradient(0deg, rgba(88,72,49,.14) 0 1px, transparent 1px 6px); font-size: .58rem; writing-mode: vertical-rl; letter-spacing: .12em; overflow: visible; }
+.map-compass { position: absolute; top: -18px; right: 4px; color: rgba(74,81,55,.55); font: 700 .55rem/1 var(--serif); }
 .map-compass::after { content: '↑'; display: block; font-size: .8rem; text-align: center; }
-.home-map-first .map-room-kitchen { left: 24%; top: 24%; width: 52%; height: 21%; }
-.home-map-first .map-room-powder-room { left: 58%; top: 13%; width: 18%; height: 10%; padding: 6px; }
-.home-map-first .map-room-powder-room strong { font-size: .7rem; }
-.home-map-first .map-room-living-dining { left: 24%; right: 24%; bottom: 8%; height: 46%; }
+.home-map-first .map-room-kitchen { left: 24%; top: 23%; width: 52%; height: 23%; }
+.home-map-first .map-room-powder-room { left: 54%; top: 10%; width: 22%; height: 12%; }
+.home-map-first .map-room-living-dining { left: 24%; right: 24%; bottom: 12%; height: 40%; }
 .home-map-first .map-room-living-dining::before { background: linear-gradient(0deg, transparent 0 47%, rgba(89,72,48,.22) 47% 47.5%, transparent 47.5%), repeating-linear-gradient(90deg, transparent 0 18px, rgba(97,79,49,.1) 19px 20px); }
 .home-map-first .map-garage { left: 24%; top: 2%; width: 34%; height: 10%; }
 .home-map-first .map-patio { right: 3%; top: 2%; width: 19%; height: 20%; }
-.home-map-first .map-pantry { left: 24%; top: 13%; width: 18%; height: 10%; }
+.home-map-first .map-pantry { left: 24%; top: 13%; width: 18%; height: 9%; }
 .home-map-first .map-deck { right: 3%; top: 24%; width: 19%; height: 43%; }
-.home-map-first .map-porch { left: 34%; bottom: 1%; width: 32%; height: 6%; }
-.home-map-first .map-stairs { left: 8%; top: 46%; width: 14%; height: 28%; }
+.home-map-first .map-porch { left: 34%; bottom: 4%; width: 32%; height: 7%; }
+.home-map-first .map-stairs { left: 8%; top: 44%; width: 14%; height: 30%; }
 .home-map-second .map-room-guest-bath { left: 7%; top: 13%; width: 29%; height: 16%; }
 .home-map-second .map-room-guest-bedroom { left: auto; right: 7%; top: 5%; width: 49%; height: 22%; }
-.home-map-second .map-room-laundry { left: auto; right: 7%; top: 28%; width: 32%; height: 13%; padding: 7px; }
-.home-map-second .map-room-study { left: 41%; top: 42%; width: 52%; height: 21%; }
+.home-map-second .map-room-laundry { left: auto; right: 7%; top: 28%; width: 32%; height: 14%; }
+.home-map-second .map-room-study { left: 41%; top: 43%; width: 52%; height: 20%; }
 .home-map-second .map-room-primary-bedroom { left: 38%; right: 7%; bottom: 5%; height: 27%; }
 .home-map-second .map-room-primary-bedroom::before { background: linear-gradient(90deg, rgba(96,77,49,.14) 0 28%, transparent 28%), repeating-linear-gradient(90deg, transparent 0 18px, rgba(97,79,49,.1) 19px 20px); }
-.home-map-second .map-room-primary-bathroom { left: 7%; top: 64%; width: 29%; height: 15%; padding: 7px; }
-.home-map-second .map-wic-top { left: 7%; top: 5%; width: 29%; height: 7%; }
+.home-map-second .map-room-primary-bathroom { left: 7%; top: 64%; width: 29%; height: 16%; }
+.home-map-second .map-wic-top { left: 7%; top: 6%; width: 29%; height: 8%; }
 .home-map-second .map-hall { left: 7%; top: 30%; width: 32%; height: 11%; }
-.home-map-second .map-wic-bottom { left: 7%; bottom: 5%; width: 14%; height: 15%; }
-.home-map-second .map-stairs { left: 7%; top: 42%; width: 32%; height: 21%; }
+.home-map-second .map-wic-bottom { left: 7%; bottom: 6%; width: 16%; height: 16%; }
+.home-map-second .map-stairs { left: 7%; top: 42%; width: 32%; height: 20%; letter-spacing: .08em; }
 .basement-note { display: inline-flex; justify-self: center; align-items: center; gap: 5px; margin: -7px 0 0; padding: 5px 10px; border-radius: 999px; background: rgba(91,78,57,.06); }
 .basement-note::before { content: '▿'; color: #8a7a60; }
 .room-chore-sheet { border-radius: 18px; background: linear-gradient(150deg, rgba(255,253,244,.95), rgba(241,237,217,.9)); box-shadow: 0 9px 24px rgba(67,56,38,.09); }
@@ -2547,10 +2513,11 @@ button {
 .editor-actions .danger-link { margin-right: auto; color: #8b473e; background: rgba(151,72,59,.08); }
 @media (max-width: 460px) {
   .home-map-frame { padding-inline: 5px; }
-  .home-map { width: 94%; min-height: 400px; }
-  .map-room { padding: 8px; }
-  .map-room .room-state { font-size: 1.05rem; }
-  .room-glyph { top: 7px; right: 7px; font-size: 1rem; }
+  .home-map { width: 94%; min-height: 430px; }
+  .map-room { padding: 12px 6px 6px; }
+  .map-room .room-state { font-size: .95rem; }
+  .map-room.is-compact { padding: 10px 5px 4px; }
+  .room-glyph { top: 7px; right: 7px; font-size: .95rem; }
   .add-chore-form { grid-template-columns: 1fr 1fr; }
   .add-chore-form input { grid-column: 1 / -1; }
 }

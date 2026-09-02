@@ -25,27 +25,48 @@ export function HouseholdPanel() {
       <button className={floor === 'second' ? 'active' : ''} onClick={() => { setFloor('second'); setRoomId(null) }}>二楼</button>
     </nav>
     <div className="home-map-frame">
-    <div className="map-caption"><span>{floor === 'first' ? 'FIRST FLOOR · 一楼' : 'SECOND FLOOR · 二楼'}</span><small><i />清爽 <i />待照料</small></div>
+    <div className="map-caption"><span>{floor === 'first' ? '一楼' : '二楼'}</span><small><i />清爽 <i />待照料</small></div>
     <div className={`home-map home-map-${floor}`} aria-label={`${floor === 'first' ? '一' : '二'}楼家园地图`}>
       <span className="map-compass" aria-hidden="true">N</span>
       {floor === 'first' ? <>
-        <span className="map-ghost map-garage">车库<br />GARAGE</span>
-        <span className="map-ghost map-patio">庭院<br />PATIO</span>
-        <span className="map-ghost map-pantry">储藏间</span>
-        <span className="map-ghost map-deck">露台<br />DECK</span>
+        <span className="map-ghost map-garage">车库</span>
+        <span className="map-ghost map-patio">庭院</span>
+        <span className="map-ghost map-pantry">储藏</span>
+        <span className="map-ghost map-deck">露台</span>
         <span className="map-ghost map-porch">门廊</span>
         <span className="map-stairs">楼梯</span>
       </> : <>
-        <span className="map-ghost map-wic-top">衣帽间</span>
+        <span className="map-ghost map-wic-top">衣帽</span>
         <span className="map-ghost map-hall">走廊</span>
-        <span className="map-ghost map-wic-bottom">衣帽间</span>
+        <span className="map-ghost map-wic-bottom">衣帽</span>
         <span className="map-stairs">楼梯</span>
       </>}
       {rooms.map((room) => {
         const maintenance = roomMaintenance(room, completions)
         const due = room.chores.filter((item) => choreIsDue(item.frequency, completions[item.id]?.completedAt)).length
-        return <button key={room.id} aria-label={`${room.name}，维护度 ${maintenance}%`} className={`map-room map-room-${room.mapClass}${maintenance === 100 ? ' is-clean' : ''}${selected?.id === room.id ? ' is-selected' : ''}`} onClick={() => setRoomId(room.id)}>
-          <b className="room-glyph" aria-hidden="true">{roomGlyphs[room.id]}</b><strong>{room.mapName ?? room.name}</strong><span className="room-state">{maintenance}%</span>{due > 0 ? <small>{due} 项待照料</small> : <small>清爽明亮</small>}
+        const compact = ['powder-room', 'laundry', 'guest-bath', 'primary-bathroom'].includes(room.mapClass)
+        return <button key={room.id} aria-label={`${room.name}，维护度 ${maintenance}%${due > 0 ? `，${due} 项待照料` : ''}`} className={`map-room map-room-${room.mapClass}${compact ? ' is-compact' : ''}${maintenance === 100 ? ' is-clean' : ''}${selected?.id === room.id ? ' is-selected' : ''}`} onClick={() => setRoomId(room.id)}>
+          {!compact && <b className="room-glyph" aria-hidden="true">{roomGlyphs[room.id]}</b>}
+          {due > 0 && (
+            <svg className="room-due" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+              <circle cx="10" cy="10" r="10" fill="#6b8a5a" />
+              <text
+                x="10"
+                y="13.25"
+                textAnchor="middle"
+                fill="#fff"
+                fontSize="9"
+                fontWeight="700"
+                fontFamily="system-ui, -apple-system, Segoe UI, sans-serif"
+              >
+                {due}
+              </text>
+            </svg>
+          )}
+          <span className="room-copy">
+            <strong>{room.mapName ?? room.name}</strong>
+            <span className="room-state">{maintenance}%</span>
+          </span>
         </button>
       })}
     </div>

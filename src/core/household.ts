@@ -24,7 +24,7 @@ export interface HomeRoomDefinition {
 const chore = (id: string, title: string, frequency: ChoreFrequency, details: string[]): ChoreDefinition => ({ id, title, frequency, details })
 
 export const HOME_ROOMS: HomeRoomDefinition[] = [
-  { id: 'living-dining', name: '一楼客厅 / 餐厅', mapName: '客厅 / 餐厅', floor: 'first', mapClass: 'living-dining', chores: [
+  { id: 'living-dining', name: '一楼客厅 / 餐厅', mapName: '客厅·餐厅', floor: 'first', mapClass: 'living-dining', chores: [
     chore('living-reset', '收好散落物与宠物用品', 'daily', ['散落物品', '宠物用品', '宠物毛聚集处']),
     chore('living-surfaces', '整理桌面与沙发', 'weekly', ['沙发与靠枕', '茶几', '餐桌与餐椅', '电视柜', '木柜顶部']),
     chore('living-floors', '清洁客餐厅地面', 'weekly', ['木地板', '红色大地毯', '白色地毯', '沙发底部']),
@@ -42,7 +42,7 @@ export const HOME_ROOMS: HomeRoomDefinition[] = [
     chore('powder-clean', '清洁洗手池与马桶', 'weekly', ['洗手池与水龙头', '镜子', '马桶内外']),
     chore('powder-deep', '清洁地面与边角', 'monthly', ['木地板与地垫', '窗台与百叶窗', '门把手', '踢脚线', '通风口']),
   ]},
-  { id: 'study', name: '二楼书房', mapName: '书房 / Loft', floor: 'second', mapClass: 'study', chores: [
+  { id: 'study', name: '二楼书房', mapName: '书房', floor: 'second', mapClass: 'study', chores: [
     chore('study-reset', '整理书桌与散落物', 'weekly', ['书桌桌面', '电线周围', '垃圾与散落物品']),
     chore('study-dust', '清洁书房表面', 'weekly', ['电脑设备', '书柜与书籍', '画架', '置物架与椅子']),
     chore('study-pets', '整理猫咪区域', 'weekly', ['猫窝', '猫爬架', '猫用品周围']),
@@ -58,7 +58,7 @@ export const HOME_ROOMS: HomeRoomDefinition[] = [
     chore('guest-bath-clean', '清洁卫浴设施', 'weekly', ['洗手池与镜子', '马桶内外', '浴缸与龙头', '浴缸墙面']),
     chore('guest-bath-deep', '客卫深度清洁', 'monthly', ['浴帘与浴帘杆', '用品架', '窗台与百叶窗', '地面', '踢脚线', '通风口']),
   ]},
-  { id: 'guest-bedroom', name: '客卧 / 游戏房', mapName: '客卧 / 游戏房', floor: 'second', mapClass: 'guest-bedroom', chores: [
+  { id: 'guest-bedroom', name: '客卧 / 游戏房', mapName: '客卧', floor: 'second', mapClass: 'guest-bedroom', chores: [
     chore('guest-room-reset', '整理客卧与游戏区', 'weekly', ['床与床品', '桌面与椅子', '游戏设备', '散落物品']),
     chore('guest-room-dust', '清洁家具与电子设备', 'monthly', ['电视与电视柜', '床头板', '植物', '窗台与窗帘', '灯带周围']),
     chore('guest-room-deep', '客卧深度清洁', 'seasonal', ['地板', '床底', '家具底部', '门与门把手', '踢脚线']),
