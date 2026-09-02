@@ -2,7 +2,7 @@ import type { GameState } from './types'
 
 const KEY = 'productivity-valley-v1'
 const BACKUP_KEY = 'productivity-valley-backup-v1'
-const CURRENT_SCHEMA_VERSION = 23
+const CURRENT_SCHEMA_VERSION = 24
 
 type PersistedState = Omit<
   GameState,
@@ -79,8 +79,10 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
         if (!isRecord(cell)) return false
         if (typeof cell.title !== 'string') return false
         if (
-          cell.tone !== undefined &&
-          !['calm', 'busy', 'focus', 'away'].includes(String(cell.tone))
+          cell.category !== undefined &&
+          !['work', 'study', 'life', 'health', 'errand'].includes(
+            String(cell.category),
+          )
         ) {
           return false
         }

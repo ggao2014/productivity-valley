@@ -1,4 +1,4 @@
-import type { TimetableCell, TimetableHour, TimetableTone, TimetableWeekday } from './types'
+import type { TaskCategory, TimetableCell, TimetableHour, TimetableWeekday } from './types'
 
 /** Inclusive hour range for the preview timetable (8:00 through 21:00). */
 export const TIMETABLE_HOUR_START = 8
@@ -22,14 +22,13 @@ export const TIMETABLE_WEEKDAY_LABELS: Record<TimetableWeekday, string> = {
   0: '日',
 }
 
-export const TIMETABLE_TONES: TimetableTone[] = ['calm', 'busy', 'focus', 'away']
-
-export const TIMETABLE_TONE_LABELS: Record<TimetableTone, string> = {
-  calm: '轻松',
-  busy: '偏忙',
-  focus: '专注',
-  away: '外出',
-}
+export const TIMETABLE_CATEGORIES: TaskCategory[] = [
+  'work',
+  'study',
+  'life',
+  'health',
+  'errand',
+]
 
 export const TIMETABLE_TITLE_MAX = 24
 
@@ -39,6 +38,13 @@ export function isTimetableHour(value: unknown): value is TimetableHour {
     Number.isInteger(value) &&
     value >= TIMETABLE_HOUR_START &&
     value <= TIMETABLE_HOUR_END
+  )
+}
+
+export function isTimetableCategory(value: unknown): value is TaskCategory {
+  return (
+    typeof value === 'string' &&
+    (TIMETABLE_CATEGORIES as readonly string[]).includes(value)
   )
 }
 
@@ -71,21 +77,16 @@ export function normalizeTimetableTitle(title: string): string {
   return title.replace(/\s+/g, ' ').trim().slice(0, TIMETABLE_TITLE_MAX)
 }
 
-export function isTimetableTone(value: unknown): value is TimetableTone {
-  return (
-    typeof value === 'string' &&
-    (TIMETABLE_TONES as readonly string[]).includes(value)
-  )
-}
-
 export function sanitizeTimetableCell(
   value: Partial<TimetableCell> | null | undefined,
 ): TimetableCell | null {
   if (!value) return null
   const title = normalizeTimetableTitle(value.title ?? '')
-  const tone = isTimetableTone(value.tone) ? value.tone : undefined
-  if (!title && !tone) return null
-  return tone ? { title, tone } : { title }
+  const category = isTimetableCategory(value.category)
+    ? value.category
+    : undefined
+  if (!title && !category) return null
+  return category ? { title, category } : { title }
 }
 
 export function sanitizeTimetable(

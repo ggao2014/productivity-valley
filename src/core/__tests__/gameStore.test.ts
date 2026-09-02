@@ -38,17 +38,21 @@ describe('built-in facility migration', () => {
 })
 
 describe('preview timetable', () => {
-  it('stores freeform weekday-hour marks without dates or tasks', () => {
-    useGameStore.getState().setTimetableCell(1, 9, '写材料', 'focus')
+  it('stores freeform weekday-hour marks without dates, tasks, or toasts', () => {
+    useGameStore.setState({ toast: null })
+    useGameStore.getState().setTimetableCell(1, 9, '写材料', 'study')
     expect(useGameStore.getState().timetable['1:9']).toEqual({
       title: '写材料',
-      tone: 'focus',
+      category: 'study',
     })
+    expect(useGameStore.getState().toast).toBeNull()
     useGameStore.getState().setTimetableCell(1, 9, '  ')
     expect(useGameStore.getState().timetable['1:9']).toBeUndefined()
-    useGameStore.getState().setTimetableCell(5, 19, '出门', 'away')
+    expect(useGameStore.getState().toast).toBeNull()
+    useGameStore.getState().setTimetableCell(5, 19, '出门', 'life')
     useGameStore.getState().clearTimetableMark(5, 19)
     expect(useGameStore.getState().timetable).toEqual({})
+    expect(useGameStore.getState().toast).toBeNull()
   })
 })
 

@@ -49,7 +49,6 @@ import {
 import {
   clearTimetableCell,
   sanitizeTimetable,
-  timetableCellLabel,
   upsertTimetableCell,
 } from './timetable'
 import {
@@ -99,7 +98,6 @@ import type {
   ChorePreference,
   ChoreFrequency,
   TimetableHour,
-  TimetableTone,
   TimetableWeekday,
 } from './types'
 
@@ -361,7 +359,7 @@ interface Actions {
     weekday: TimetableWeekday,
     hour: TimetableHour,
     title: string,
-    tone?: TimetableTone | null,
+    category?: TaskCategory | null,
   ) => void
   clearTimetableMark: (weekday: TimetableWeekday, hour: TimetableHour) => void
   addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
@@ -815,21 +813,15 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     })
   },
 
-  setTimetableCell: (weekday, hour, title, tone) => {
+  setTimetableCell: (weekday, hour, title, category) => {
     set((s) => {
-      const nextTone = tone === null ? undefined : tone
-      const timetable = upsertTimetableCell(s.timetable ?? {}, weekday, hour, {
-        title,
-        tone: nextTone,
-      })
-      const key = `${weekday}:${hour}`
-      const hasMark = Boolean(timetable[key])
+      const nextCategory = category === null ? undefined : category
       return persist({
         ...s,
-        timetable,
-        toast: hasMark
-          ? `已记下${timetableCellLabel(weekday, hour)}`
-          : `已清空${timetableCellLabel(weekday, hour)}`,
+        timetable: upsertTimetableCell(s.timetable ?? {}, weekday, hour, {
+          title,
+          category: nextCategory,
+        }),
       })
     })
   },
@@ -839,7 +831,6 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       persist({
         ...s,
         timetable: clearTimetableCell(s.timetable ?? {}, weekday, hour),
-        toast: `已清空${timetableCellLabel(weekday, hour)}`,
       }),
     )
   },

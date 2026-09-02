@@ -80,11 +80,10 @@ export type PlanSlot = 'morning' | 'afternoon' | 'evening' | 'anytime'
 export type TimetableWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
 /** Clock hour used as a timetable row (e.g. 9 = 9:00–10:00). */
 export type TimetableHour = number
-export type TimetableTone = 'calm' | 'busy' | 'focus' | 'away'
 
 export interface TimetableCell {
   title: string
-  tone?: TimetableTone
+  category?: TaskCategory
 }
 
 export type PlanTarget =
