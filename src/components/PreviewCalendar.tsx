@@ -109,6 +109,7 @@ export function PreviewCalendar() {
               type="button"
               role="gridcell"
               className={`preview-day${cell.isToday ? ' is-today' : ''}${selected ? ' is-selected' : ''}${mark ? ' has-mark' : ''}`}
+              data-day={cell.dayKey}
               data-tone={mark?.tone}
               aria-label={`${cell.dayKey}${mark?.note ? `，${mark.note}` : ''}`}
               aria-pressed={selected}
