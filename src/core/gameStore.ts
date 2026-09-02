@@ -419,7 +419,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           toast:
             loaded.source === 'corrupt'
               ? '存档和备份均无法读取，已安全创建新进度'
-              : '欢迎！先写下今天想完成的一件事',
+              : null,
         }),
       )
       return
