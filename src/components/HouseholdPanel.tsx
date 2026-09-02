@@ -92,17 +92,82 @@ export function TodayChores() {
   const customChores = useGameStore((state) => state.customChores)
   const toggleChore = useGameStore((state) => state.toggleChore)
   const [expanded, setExpanded] = useState(false)
-  const allChores = useMemo(() => configuredHomeRooms(preferences, customChores).flatMap((room) => room.chores.map((item) => ({ ...item, roomName: room.name }))), [preferences, customChores])
-  const scheduled = allChores.filter((item) => item.enabled !== false && ((item.frequency === 'daily' && item.includeInToday !== false) || plan.choreIds.includes(item.id)))
-  const due = scheduled.filter((item) => choreIsDue(item.frequency, completions[item.id]?.completedAt))
+  const allChores = useMemo(
+    () =>
+      configuredHomeRooms(preferences, customChores).flatMap((room) =>
+        room.chores.map((item) => ({ ...item, roomName: room.name })),
+      ),
+    [preferences, customChores],
+  )
+  const scheduled = allChores.filter(
+    (item) =>
+      item.enabled !== false &&
+      ((item.frequency === 'daily' && item.includeInToday !== false) ||
+        plan.choreIds.includes(item.id)),
+  )
+  const due = scheduled.filter((item) =>
+    choreIsDue(item.frequency, completions[item.id]?.completedAt),
+  )
   const visible = expanded ? due : due.slice(0, 3)
-  return <section className={`today-chores${due.length === 0 ? ' is-complete' : ''}`}>
-    <button className="today-chores-heading" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
-      <span><b>今日家务</b><small>{due.length ? `${due.length} 处等你照料` : '家中清爽'}</small></span><strong>{scheduled.length - due.length}/{scheduled.length}</strong>
-    </button>
-    {visible.length > 0 && <div className="today-chore-list">{visible.map((item) => <button key={item.id} onClick={() => toggleChore(item.id)}><i /><span><strong>{item.title}</strong><small>{item.roomName} · {FREQUENCY_LABELS[item.frequency]}</small></span></button>)}</div>}
-    {!expanded && due.length > 3 && <button className="today-chores-more" onClick={() => setExpanded(true)}>再看 {due.length - 3} 项</button>}
-  </section>
+
+  return (
+    <section className={`today-chores${due.length === 0 ? ' is-complete' : ''}`}>
+      <button
+        className="today-chores-heading"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+      >
+        <span>
+          <b>今日家务</b>
+          <small>{due.length ? `${due.length} 处等你照料` : '家中清爽'}</small>
+        </span>
+        <strong>
+          {scheduled.length - due.length}/{scheduled.length}
+        </strong>
+      </button>
+      {visible.length > 0 && (
+        <div className="today-chore-list">
+          {visible.map((item) => (
+            <details key={item.id}>
+              <summary>
+                <button
+                  type="button"
+                  className="chore-check"
+                  aria-label={`完成${item.title}`}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    toggleChore(item.id)
+                  }}
+                />
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.roomName} · {FREQUENCY_LABELS[item.frequency]}
+                    {item.details.length > 0 ? ` · ${item.details.length} 个细项` : ''}
+                  </small>
+                </span>
+              </summary>
+              {item.details.length > 0 ? (
+                <ul>
+                  {item.details.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="today-chore-empty">暂无细项</p>
+              )}
+            </details>
+          ))}
+        </div>
+      )}
+      {!expanded && due.length > 3 && (
+        <button className="today-chores-more" onClick={() => setExpanded(true)}>
+          再看 {due.length - 3} 项
+        </button>
+      )}
+    </section>
+  )
 }
 
 const FREQUENCIES = Object.keys(FREQUENCY_LABELS) as ChoreFrequency[]
