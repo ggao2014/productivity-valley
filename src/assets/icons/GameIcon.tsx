@@ -17,6 +17,7 @@ export type GameIconName =
   | 'chat'
   | 'spark'
   | 'settings'
+  | 'grid'
 
 interface GameIconProps {
   name: GameIconName
@@ -71,6 +72,12 @@ export function GameIcon({ name, className = '' }: GameIconProps) {
         <>
           <circle cx="12" cy="12" r="3.2" />
           <path d="M12.3 2.8h-.6a2 2 0 0 0-2 2v.3c0 .7-.4 1.4-1 1.7l-.5.3a2 2 0 0 1-2 0L6 7a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.8v.5a2 2 0 0 1-1 1.7l-.2.2A2 2 0 0 0 3 17.9l.3.4A2 2 0 0 0 6 19l.2-.1a2 2 0 0 1 2 0l.5.3a2 2 0 0 1 1 1.7v.3a2 2 0 0 0 2 2h.6a2 2 0 0 0 2-2v-.3a2 2 0 0 1 1-1.7l.5-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.3-.4a2 2 0 0 0-.7-2.7l-.2-.2a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.8l.2-.1a2 2 0 0 0 .7-2.7l-.3-.5A2 2 0 0 0 18 7l-.2.1a2 2 0 0 1-2 0l-.5-.3a2 2 0 0 1-1-1.7v-.3a2 2 0 0 0-2-2Z" />
+        </>
+      )}
+      {name === 'grid' && (
+        <>
+          <rect x="3.5" y="3.5" width="17" height="17" rx="2.2" />
+          <path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17" />
         </>
       )}
       {name === 'bamboo' && (

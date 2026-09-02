@@ -2054,6 +2054,12 @@ button {
 .desk-toolbar > div { display: flex; align-items: center; gap: 8px; color: var(--moss-deep); }
 .desk-toolbar h2 { margin: 0; font-family: var(--font-display); font-size: 1.35rem; }
 .desk-toolbar > div .game-icon { width: 20px; height: 20px; }
+.desk-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.desk-toolbar-actions button,
 .desk-toolbar > button {
   display: grid;
   place-items: center;
@@ -2063,9 +2069,15 @@ button {
   border-radius: 50%;
   color: var(--moss-deep);
   background: rgba(255, 255, 255, .48);
+  cursor: pointer;
 }
+.desk-toolbar-actions button:hover,
 .desk-toolbar > button:hover { background: rgba(92, 122, 90, .12); }
+.desk-toolbar-actions button .game-icon,
 .desk-toolbar > button .game-icon { width: 18px; height: 18px; }
+.timetable-dialog-body {
+  padding: 22px 20px 24px;
+}
 
 .today-progress::after {
   content: '❧';
@@ -4435,7 +4447,7 @@ button {
 }
 
 /* Productivity: habits and project blocks */
-.productivity-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 0 22px;padding:5px;border:1px solid rgba(96,73,45,.18);border-radius:14px;background:rgba(255,250,237,.72)}
+.productivity-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0 22px;padding:5px;border:1px solid rgba(96,73,45,.18);border-radius:14px;background:rgba(255,250,237,.72)}
 .productivity-tabs button{border:0;border-radius:10px;padding:10px;color:var(--ink-soft);background:transparent;font:inherit;font-weight:700;cursor:pointer}
 .productivity-tabs button.active{color:#fff;background:var(--moss-deep);box-shadow:0 3px 8px rgba(52,93,62,.28);text-shadow:0 1px 1px rgba(0,0,0,.18)}
 .productivity-tabs button:not(.active):hover{color:var(--moss-deep);background:rgba(92,122,90,.1)}

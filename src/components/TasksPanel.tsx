@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PreviewTimetable } from './PreviewTimetable'
 import { TodayChores } from './HouseholdPanel'
 import { GameIcon } from '../assets/icons/GameIcon'
@@ -42,7 +42,7 @@ import type {
 } from '../core/types'
 import { TASK_CATEGORIES, taskCategory } from '../core/taskCategories'
 
-type TaskView = 'today' | 'timetable' | 'habits' | 'projects'
+type TaskView = 'today' | 'habits' | 'projects'
 
 const WEEKDAYS = [
   { value: 1, label: '一' },
@@ -76,6 +76,16 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
     onboardingStep,
   } = state
   const [view, setView] = useState<TaskView>('today')
+  const [timetableOpen, setTimetableOpen] = useState(false)
+
+  useEffect(() => {
+    if (!timetableOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setTimetableOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [timetableOpen])
 
   const todayKey = localDayKey()
   const dueHabits = habits.filter((habit) => habitDueOn(habit))
@@ -106,13 +116,22 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
     <div className="panel productivity-panel">
       <header className="desk-toolbar">
         <div><GameIcon name="book" /><h2>案头</h2></div>
-        <button type="button" onClick={onOpenSettings} aria-label="打开设置" title="设置">
-          <GameIcon name="settings" />
-        </button>
+        <div className="desk-toolbar-actions">
+          <button
+            type="button"
+            onClick={() => setTimetableOpen(true)}
+            aria-label="打开时间表"
+            title="时间表"
+          >
+            <GameIcon name="grid" />
+          </button>
+          <button type="button" onClick={onOpenSettings} aria-label="打开设置" title="设置">
+            <GameIcon name="settings" />
+          </button>
+        </div>
       </header>
       <nav className="productivity-tabs" aria-label="任务分类">
         <button className={view === 'today' ? 'active' : ''} onClick={() => setView('today')}>今天</button>
-        <button className={view === 'timetable' ? 'active' : ''} onClick={() => setView('timetable')}>时间表</button>
         <button className={view === 'habits' ? 'active' : ''} onClick={() => setView('habits')}>习惯</button>
         <button className={view === 'projects' ? 'active' : ''} onClick={() => setView('projects')}>项目</button>
       </nav>
@@ -129,9 +148,32 @@ export function TasksPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
         />
         </>
       )}
-      {view === 'timetable' && <PreviewTimetable />}
       {view === 'habits' && <HabitsView rewardedHabitIds={rewardedHabitIds} />}
       {view === 'projects' && <ProjectsView />}
+
+      {timetableOpen && (
+        <div className="facility-overlay" onClick={() => setTimetableOpen(false)}>
+          <section
+            className="facility-dialog timetable-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="时间表"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="handbook-close"
+              type="button"
+              onClick={() => setTimetableOpen(false)}
+              aria-label="关闭"
+            >
+              ×
+            </button>
+            <div className="timetable-dialog-body">
+              <PreviewTimetable />
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
