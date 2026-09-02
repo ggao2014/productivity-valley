@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   cellsForWeekday,
   clearTimetableCell,
+  formatTimetableHour,
   markedTimetableCount,
   normalizeTimetableTitle,
   parseTimetableCellKey,
+  sanitizeTimetable,
   sanitizeTimetableCell,
   timetableCellKey,
   timetableCellLabel,
@@ -12,14 +14,16 @@ import {
 } from '../timetable'
 
 describe('preview timetable', () => {
-  it('builds stable weekday-slot keys without calendar dates', () => {
-    expect(timetableCellKey(1, 'morning')).toBe('1:morning')
-    expect(parseTimetableCellKey('5:evening')).toEqual({
+  it('uses clock-hour keys without calendar dates or am/pm buckets', () => {
+    expect(timetableCellKey(1, 9)).toBe('1:9')
+    expect(formatTimetableHour(9)).toBe('9:00')
+    expect(parseTimetableCellKey('5:14')).toEqual({
       weekday: 5,
-      slot: 'evening',
+      hour: 14,
     })
+    expect(parseTimetableCellKey('1:morning')).toBeNull()
     expect(parseTimetableCellKey('2026-09-04')).toBeNull()
-    expect(timetableCellLabel(2, 'afternoon')).toBe('周二下午')
+    expect(timetableCellLabel(2, 15)).toBe('周二 15:00')
   })
 
   it('keeps titles short and drops empty cells', () => {
@@ -32,27 +36,39 @@ describe('preview timetable', () => {
     })
   })
 
-  it('upserts and clears cells independently', () => {
-    const first = upsertTimetableCell({}, 1, 'morning', {
+  it('upserts and clears hour cells independently', () => {
+    const first = upsertTimetableCell({}, 1, 9, {
       title: '写材料',
       tone: 'focus',
     })
-    const second = upsertTimetableCell(first, 3, 'afternoon', {
+    const second = upsertTimetableCell(first, 3, 14, {
       title: '开会',
       tone: 'busy',
     })
     expect(second).toEqual({
-      '1:morning': { title: '写材料', tone: 'focus' },
-      '3:afternoon': { title: '开会', tone: 'busy' },
+      '1:9': { title: '写材料', tone: 'focus' },
+      '3:14': { title: '开会', tone: 'busy' },
     })
     expect(markedTimetableCount(second)).toBe(2)
-    expect(cellsForWeekday(second, 1)).toEqual([
-      { slot: 'morning', cell: { title: '写材料', tone: 'focus' } },
-      { slot: 'afternoon', cell: undefined },
-      { slot: 'evening', cell: undefined },
-    ])
-    expect(clearTimetableCell(second, 1, 'morning')).toEqual({
-      '3:afternoon': { title: '开会', tone: 'busy' },
+    const monday = cellsForWeekday(second, 1)
+    expect(monday.find((item) => item.hour === 9)?.cell).toEqual({
+      title: '写材料',
+      tone: 'focus',
+    })
+    expect(monday.find((item) => item.hour === 10)?.cell).toBeUndefined()
+    expect(clearTimetableCell(second, 1, 9)).toEqual({
+      '3:14': { title: '开会', tone: 'busy' },
+    })
+  })
+
+  it('drops legacy morning/afternoon keys when sanitizing', () => {
+    expect(
+      sanitizeTimetable({
+        '1:morning': { title: '旧的' },
+        '2:10': { title: '新的' },
+      }),
+    ).toEqual({
+      '2:10': { title: '新的' },
     })
   })
 })

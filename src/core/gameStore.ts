@@ -48,6 +48,7 @@ import {
 } from './plan'
 import {
   clearTimetableCell,
+  sanitizeTimetable,
   timetableCellLabel,
   upsertTimetableCell,
 } from './timetable'
@@ -97,7 +98,7 @@ import type {
   CourtyardLandscapeId,
   ChorePreference,
   ChoreFrequency,
-  TimetableSlot,
+  TimetableHour,
   TimetableTone,
   TimetableWeekday,
 } from './types'
@@ -358,11 +359,11 @@ interface Actions {
   setPlan: (target: PlanTarget, slot: PlanSlot, dayKey?: string) => void
   setTimetableCell: (
     weekday: TimetableWeekday,
-    slot: TimetableSlot,
+    hour: TimetableHour,
     title: string,
     tone?: TimetableTone | null,
   ) => void
-  clearTimetableMark: (weekday: TimetableWeekday, slot: TimetableSlot) => void
+  clearTimetableMark: (weekday: TimetableWeekday, hour: TimetableHour) => void
   addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
   adjustHabit: (id: string, delta: number) => void
   archiveHabit: (id: string) => void
@@ -449,7 +450,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       habits: (saved.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
       projects: (saved.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
       plans: saved.plans ?? [],
-      timetable: saved.timetable ?? {},
+      timetable: sanitizeTimetable(saved.timetable),
       rooms: normalizedRooms,
       courtyardLevel,
       habitRewardSnapshots: saved.habitRewardSnapshots ?? {},
@@ -634,7 +635,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         habits: (imported.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
         projects: (imported.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
         plans: imported.plans ?? [],
-        timetable: imported.timetable ?? {},
+        timetable: sanitizeTimetable(imported.timetable),
         rooms: normalizedRooms,
         courtyardLevel,
         ...landscapes,
@@ -814,31 +815,31 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     })
   },
 
-  setTimetableCell: (weekday, slot, title, tone) => {
+  setTimetableCell: (weekday, hour, title, tone) => {
     set((s) => {
       const nextTone = tone === null ? undefined : tone
-      const timetable = upsertTimetableCell(s.timetable ?? {}, weekday, slot, {
+      const timetable = upsertTimetableCell(s.timetable ?? {}, weekday, hour, {
         title,
         tone: nextTone,
       })
-      const key = `${weekday}:${slot}`
+      const key = `${weekday}:${hour}`
       const hasMark = Boolean(timetable[key])
       return persist({
         ...s,
         timetable,
         toast: hasMark
-          ? `已记下${timetableCellLabel(weekday, slot)}`
-          : `已清空${timetableCellLabel(weekday, slot)}`,
+          ? `已记下${timetableCellLabel(weekday, hour)}`
+          : `已清空${timetableCellLabel(weekday, hour)}`,
       })
     })
   },
 
-  clearTimetableMark: (weekday, slot) => {
+  clearTimetableMark: (weekday, hour) => {
     set((s) =>
       persist({
         ...s,
-        timetable: clearTimetableCell(s.timetable ?? {}, weekday, slot),
-        toast: `已清空${timetableCellLabel(weekday, slot)}`,
+        timetable: clearTimetableCell(s.timetable ?? {}, weekday, hour),
+        toast: `已清空${timetableCellLabel(weekday, hour)}`,
       }),
     )
   },

@@ -78,7 +78,8 @@ export type PlanSlot = 'morning' | 'afternoon' | 'evening' | 'anytime'
 
 /** Freeform week timetable marks — not tied to calendar dates or todos. */
 export type TimetableWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
-export type TimetableSlot = 'morning' | 'afternoon' | 'evening'
+/** Clock hour used as a timetable row (e.g. 9 = 9:00–10:00). */
+export type TimetableHour = number
 export type TimetableTone = 'calm' | 'busy' | 'focus' | 'away'
 
 export interface TimetableCell {

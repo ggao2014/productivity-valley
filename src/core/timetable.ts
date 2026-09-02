@@ -1,12 +1,13 @@
-import type { TimetableCell, TimetableSlot, TimetableTone, TimetableWeekday } from './types'
+import type { TimetableCell, TimetableHour, TimetableTone, TimetableWeekday } from './types'
 
-export const TIMETABLE_SLOTS: TimetableSlot[] = ['morning', 'afternoon', 'evening']
+/** Inclusive hour range for the preview timetable (8:00 through 21:00). */
+export const TIMETABLE_HOUR_START = 8
+export const TIMETABLE_HOUR_END = 21
 
-export const TIMETABLE_SLOT_LABELS: Record<TimetableSlot, string> = {
-  morning: '上午',
-  afternoon: '下午',
-  evening: '晚上',
-}
+export const TIMETABLE_HOURS: TimetableHour[] = Array.from(
+  { length: TIMETABLE_HOUR_END - TIMETABLE_HOUR_START + 1 },
+  (_, index) => TIMETABLE_HOUR_START + index,
+)
 
 /** Monday-first weekday order for the week grid. */
 export const TIMETABLE_WEEKDAYS: TimetableWeekday[] = [1, 2, 3, 4, 5, 6, 0]
@@ -32,23 +33,37 @@ export const TIMETABLE_TONE_LABELS: Record<TimetableTone, string> = {
 
 export const TIMETABLE_TITLE_MAX = 24
 
+export function isTimetableHour(value: unknown): value is TimetableHour {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= TIMETABLE_HOUR_START &&
+    value <= TIMETABLE_HOUR_END
+  )
+}
+
+export function formatTimetableHour(hour: TimetableHour): string {
+  return `${hour}:00`
+}
+
 export function timetableCellKey(
   weekday: TimetableWeekday,
-  slot: TimetableSlot,
+  hour: TimetableHour,
 ): string {
-  return `${weekday}:${slot}`
+  return `${weekday}:${hour}`
 }
 
 export function parseTimetableCellKey(
   key: string,
-): { weekday: TimetableWeekday; slot: TimetableSlot } | null {
-  const [weekdayRaw, slotRaw] = key.split(':')
+): { weekday: TimetableWeekday; hour: TimetableHour } | null {
+  const [weekdayRaw, hourRaw] = key.split(':')
   const weekday = Number(weekdayRaw)
+  const hour = Number(hourRaw)
   if (![0, 1, 2, 3, 4, 5, 6].includes(weekday)) return null
-  if (!TIMETABLE_SLOTS.includes(slotRaw as TimetableSlot)) return null
+  if (!isTimetableHour(hour)) return null
   return {
     weekday: weekday as TimetableWeekday,
-    slot: slotRaw as TimetableSlot,
+    hour,
   }
 }
 
@@ -73,14 +88,27 @@ export function sanitizeTimetableCell(
   return tone ? { title, tone } : { title }
 }
 
+export function sanitizeTimetable(
+  timetable: Record<string, TimetableCell> | undefined,
+): Record<string, TimetableCell> {
+  if (!timetable) return {}
+  const next: Record<string, TimetableCell> = {}
+  for (const [key, value] of Object.entries(timetable)) {
+    if (!parseTimetableCellKey(key)) continue
+    const cell = sanitizeTimetableCell(value)
+    if (cell) next[key] = cell
+  }
+  return next
+}
+
 export function upsertTimetableCell(
   timetable: Record<string, TimetableCell>,
   weekday: TimetableWeekday,
-  slot: TimetableSlot,
+  hour: TimetableHour,
   value: Partial<TimetableCell>,
 ): Record<string, TimetableCell> {
   const next = { ...timetable }
-  const key = timetableCellKey(weekday, slot)
+  const key = timetableCellKey(weekday, hour)
   const sanitized = sanitizeTimetableCell(value)
   if (!sanitized) {
     delete next[key]
@@ -93,9 +121,9 @@ export function upsertTimetableCell(
 export function clearTimetableCell(
   timetable: Record<string, TimetableCell>,
   weekday: TimetableWeekday,
-  slot: TimetableSlot,
+  hour: TimetableHour,
 ): Record<string, TimetableCell> {
-  const key = timetableCellKey(weekday, slot)
+  const key = timetableCellKey(weekday, hour)
   if (!(key in timetable)) return timetable
   const next = { ...timetable }
   delete next[key]
@@ -111,10 +139,10 @@ export function markedTimetableCount(
 export function cellsForWeekday(
   timetable: Record<string, TimetableCell>,
   weekday: TimetableWeekday,
-): Array<{ slot: TimetableSlot; cell?: TimetableCell }> {
-  return TIMETABLE_SLOTS.map((slot) => ({
-    slot,
-    cell: timetable[timetableCellKey(weekday, slot)],
+): Array<{ hour: TimetableHour; cell?: TimetableCell }> {
+  return TIMETABLE_HOURS.map((hour) => ({
+    hour,
+    cell: timetable[timetableCellKey(weekday, hour)],
   }))
 }
 
@@ -123,9 +151,16 @@ export function weekdayFromDate(date = new Date()): TimetableWeekday {
   return date.getDay() as TimetableWeekday
 }
 
+export function hourFromDate(date = new Date()): TimetableHour {
+  const hour = date.getHours()
+  if (hour < TIMETABLE_HOUR_START) return TIMETABLE_HOUR_START
+  if (hour > TIMETABLE_HOUR_END) return TIMETABLE_HOUR_END
+  return hour
+}
+
 export function timetableCellLabel(
   weekday: TimetableWeekday,
-  slot: TimetableSlot,
+  hour: TimetableHour,
 ): string {
-  return `周${TIMETABLE_WEEKDAY_LABELS[weekday]}${TIMETABLE_SLOT_LABELS[slot]}`
+  return `周${TIMETABLE_WEEKDAY_LABELS[weekday]} ${formatTimetableHour(hour)}`
 }

@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react'
 import {
-  TIMETABLE_SLOTS,
-  TIMETABLE_SLOT_LABELS,
+  TIMETABLE_HOURS,
   TIMETABLE_TITLE_MAX,
   TIMETABLE_TONES,
   TIMETABLE_TONE_LABELS,
   TIMETABLE_WEEKDAYS,
   TIMETABLE_WEEKDAY_LABELS,
   cellsForWeekday,
+  formatTimetableHour,
+  hourFromDate,
   markedTimetableCount,
   timetableCellKey,
   timetableCellLabel,
   weekdayFromDate,
 } from '../core/timetable'
 import { useGameStore } from '../core/gameStore'
-import type { TimetableSlot, TimetableTone, TimetableWeekday } from '../core/types'
+import type { TimetableHour, TimetableTone, TimetableWeekday } from '../core/types'
 
 type TimetableView = 'week' | 'day'
 
@@ -25,32 +26,32 @@ export function PreviewTimetable() {
 
   const [view, setView] = useState<TimetableView>('week')
   const [weekday, setWeekday] = useState<TimetableWeekday>(weekdayFromDate())
-  const [slot, setSlot] = useState<TimetableSlot>('morning')
-  const selected = timetable[timetableCellKey(weekday, slot)]
+  const [hour, setHour] = useState<TimetableHour>(hourFromDate())
+  const selected = timetable[timetableCellKey(weekday, hour)]
   const [title, setTitle] = useState(selected?.title ?? '')
   const [tone, setTone] = useState<TimetableTone | null>(selected?.tone ?? null)
 
   useEffect(() => {
-    const current = timetable[timetableCellKey(weekday, slot)]
+    const current = timetable[timetableCellKey(weekday, hour)]
     setTitle(current?.title ?? '')
     setTone(current?.tone ?? null)
-  }, [timetable, weekday, slot])
+  }, [timetable, weekday, hour])
 
   const marked = markedTimetableCount(timetable)
 
-  function selectCell(nextWeekday: TimetableWeekday, nextSlot: TimetableSlot) {
+  function selectCell(nextWeekday: TimetableWeekday, nextHour: TimetableHour) {
     setWeekday(nextWeekday)
-    setSlot(nextSlot)
+    setHour(nextHour)
   }
 
   function saveCell() {
-    setTimetableCell(weekday, slot, title, tone)
+    setTimetableCell(weekday, hour, title, tone)
   }
 
   function clearSelected() {
     setTitle('')
     setTone(null)
-    clearTimetableMark(weekday, slot)
+    clearTimetableMark(weekday, hour)
   }
 
   return (
@@ -58,7 +59,7 @@ export function PreviewTimetable() {
       <header className="preview-timetable-head">
         <div>
           <h2>时间表</h2>
-          <p>排一排日和周长什么样，不必挂到待办，也不用管具体日期。</p>
+          <p>按钟点排日和周，不必挂到待办，也不用管具体日期。</p>
         </div>
         <span>{marked ? `已填 ${marked} 格` : '还没排'}</span>
       </header>
@@ -85,42 +86,44 @@ export function PreviewTimetable() {
       </div>
 
       {view === 'week' ? (
-        <div className="timetable-week" role="grid" aria-label="一周时间表">
-          <div className="timetable-week-head" role="row">
-            <span className="timetable-corner" />
-            {TIMETABLE_WEEKDAYS.map((day) => (
-              <span key={day} role="columnheader">
-                {TIMETABLE_WEEKDAY_LABELS[day]}
-              </span>
+        <div className="timetable-week-scroll">
+          <div className="timetable-week" role="grid" aria-label="一周时间表">
+            <div className="timetable-week-head" role="row">
+              <span className="timetable-corner" />
+              {TIMETABLE_WEEKDAYS.map((day) => (
+                <span key={day} role="columnheader">
+                  {TIMETABLE_WEEKDAY_LABELS[day]}
+                </span>
+              ))}
+            </div>
+            {TIMETABLE_HOURS.map((rowHour) => (
+              <div key={rowHour} className="timetable-week-row" role="row">
+                <span className="timetable-slot-label" role="rowheader">
+                  {formatTimetableHour(rowHour)}
+                </span>
+                {TIMETABLE_WEEKDAYS.map((day) => {
+                  const key = timetableCellKey(day, rowHour)
+                  const cell = timetable[key]
+                  const active = weekday === day && hour === rowHour
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="gridcell"
+                      className={`timetable-cell${active ? ' is-selected' : ''}${cell ? ' has-mark' : ''}`}
+                      data-cell={key}
+                      data-tone={cell?.tone}
+                      aria-label={`${timetableCellLabel(day, rowHour)}${cell?.title ? `，${cell.title}` : ''}`}
+                      aria-pressed={active}
+                      onClick={() => selectCell(day, rowHour)}
+                    >
+                      {cell?.title ? <b>{cell.title}</b> : null}
+                    </button>
+                  )
+                })}
+              </div>
             ))}
           </div>
-          {TIMETABLE_SLOTS.map((rowSlot) => (
-            <div key={rowSlot} className="timetable-week-row" role="row">
-              <span className="timetable-slot-label" role="rowheader">
-                {TIMETABLE_SLOT_LABELS[rowSlot]}
-              </span>
-              {TIMETABLE_WEEKDAYS.map((day) => {
-                const key = timetableCellKey(day, rowSlot)
-                const cell = timetable[key]
-                const active = weekday === day && slot === rowSlot
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    role="gridcell"
-                    className={`timetable-cell${active ? ' is-selected' : ''}${cell ? ' has-mark' : ''}`}
-                    data-cell={key}
-                    data-tone={cell?.tone}
-                    aria-label={`${timetableCellLabel(day, rowSlot)}${cell?.title ? `，${cell.title}` : ''}`}
-                    aria-pressed={active}
-                    onClick={() => selectCell(day, rowSlot)}
-                  >
-                    {cell?.title ? <b>{cell.title}</b> : <span>+</span>}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
         </div>
       ) : (
         <div className="timetable-day">
@@ -137,20 +140,23 @@ export function PreviewTimetable() {
               </button>
             ))}
           </div>
-          <div className="timetable-day-slots" aria-label={`周${TIMETABLE_WEEKDAY_LABELS[weekday]}`}>
-            {cellsForWeekday(timetable, weekday).map(({ slot: rowSlot, cell }) => {
-              const active = slot === rowSlot
+          <div
+            className="timetable-day-slots"
+            aria-label={`周${TIMETABLE_WEEKDAY_LABELS[weekday]}`}
+          >
+            {cellsForWeekday(timetable, weekday).map(({ hour: rowHour, cell }) => {
+              const active = hour === rowHour
               return (
                 <button
-                  key={rowSlot}
+                  key={rowHour}
                   type="button"
                   className={`timetable-day-slot${active ? ' is-selected' : ''}${cell ? ' has-mark' : ''}`}
-                  data-cell={timetableCellKey(weekday, rowSlot)}
+                  data-cell={timetableCellKey(weekday, rowHour)}
                   data-tone={cell?.tone}
                   aria-pressed={active}
-                  onClick={() => setSlot(rowSlot)}
+                  onClick={() => setHour(rowHour)}
                 >
-                  <span>{TIMETABLE_SLOT_LABELS[rowSlot]}</span>
+                  <span>{formatTimetableHour(rowHour)}</span>
                   <strong>{cell?.title || '空着'}</strong>
                 </button>
               )
@@ -161,15 +167,15 @@ export function PreviewTimetable() {
 
       <div className="preview-day-editor">
         <div className="preview-day-editor-head">
-          <strong>{timetableCellLabel(weekday, slot)}</strong>
+          <strong>{timetableCellLabel(weekday, hour)}</strong>
           <span>预览用</span>
         </div>
         <label className="preview-note-field">
-          这一段想怎样
+          这一小时想怎样
           <input
             value={title}
             maxLength={TIMETABLE_TITLE_MAX}
-            placeholder="比如：写材料 / 出门 / 轻一点"
+            placeholder="比如：写材料 / 开会 / 散步"
             aria-label="时间表备注"
             onChange={(event) => setTitle(event.target.value)}
           />
