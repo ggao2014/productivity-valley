@@ -4544,6 +4544,31 @@ button {
 .today-quick-meta select { min-width: 56px; min-height: 32px; padding: 4px 8px; font-size: .78rem; }
 .today-focus-list { display: grid; gap: 8px; margin-bottom: 12px; }
 .today-focus-item { display: grid; gap: 6px; }
+.today-focus-item.is-dragging { opacity: 0.55; }
+.today-focus-item.is-drop-target .today-action-row {
+  outline: 2px solid rgba(118, 147, 108, 0.55);
+  outline-offset: 1px;
+}
+.today-action-row.is-sortable {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  padding-left: 8px;
+}
+.drag-handle {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+.drag-handle:active { cursor: grabbing; }
+.drag-handle .game-icon { width: 14px; height: 14px; }
 .today-slot-label {
   margin: 6px 2px 0;
   color: var(--moss-deep);

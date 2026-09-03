@@ -31,6 +31,7 @@ export function gameState(overrides: Partial<GameState> = {}): GameState {
     habits: [],
     projects: [],
     plans: [],
+    dayOrders: {},
     timetable: {},
     habitRewardSnapshots: {},
     choreCompletions: {},

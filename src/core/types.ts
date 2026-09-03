@@ -219,6 +219,8 @@ export interface GameState {
   habits: Habit[]
   projects: Project[]
   plans: PlanAssignment[]
+  /** Per-day open-item order (timeline item ids). Used instead of morning/afternoon slots. */
+  dayOrders: Record<string, string[]>
   /** Weekday × slot preview grid; independent of todos and calendar dates. */
   timetable: Record<string, TimetableCell>
   habitRewardSnapshots: Record<string, string[]>

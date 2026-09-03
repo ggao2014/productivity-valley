@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PreviewTimetable } from './PreviewTimetable'
 import { TodayChores } from './HouseholdPanel'
 import { GameIcon } from '../assets/icons/GameIcon'
@@ -18,13 +18,12 @@ import {
   projectProgress,
 } from '../core/productivity'
 import {
-  PLAN_SLOTS,
-  PLAN_SLOT_LABELS,
   PLAN_DAY_SHORTCUTS,
   PLAN_DAY_SHORTCUT_LABELS,
   buildDeferredItems,
   buildTimelineItems,
-  groupBySlot,
+  reorderIds,
+  sortOpenTimelineItems,
   planPickerValue,
   relativePlanDayLabel,
   resolvePlanPicker,
@@ -189,6 +188,7 @@ function TodayView({
   const habits = useGameStore((s) => s.habits)
   const projects = useGameStore((s) => s.projects)
   const plans = useGameStore((s) => s.plans)
+  const dayOrders = useGameStore((s) => s.dayOrders)
   const adjustHabit = useGameStore((s) => s.adjustHabit)
   const completeProjectBlock = useGameStore((s) => s.completeProjectBlock)
   const addTask = useGameStore((s) => s.addTask)
@@ -198,6 +198,7 @@ function TodayView({
   const undoProjectBlock = useGameStore((s) => s.undoProjectBlock)
   const deleteTask = useGameStore((s) => s.deleteTask)
   const setPlan = useGameStore((s) => s.setPlan)
+  const reorderTodayItems = useGameStore((s) => s.reorderTodayItems)
   const [title, setTitle] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty>('small')
   const [category, setCategory] = useState<TaskCategory>('errand')
@@ -205,6 +206,10 @@ function TodayView({
   const [editTitle, setEditTitle] = useState('')
   const [editDifficulty, setEditDifficulty] = useState<Difficulty>('small')
   const [editCategory, setEditCategory] = useState<TaskCategory>('errand')
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  const dragIdRef = useRef<string | null>(null)
+  const overIdRef = useRef<string | null>(null)
 
   const todayKey = localDayKey()
   const timelineItems = useMemo(
@@ -228,9 +233,9 @@ function TodayView({
       }),
     [plans, tasks, projects, todayKey],
   )
-  const grouped = groupBySlot(timelineItems)
-  const openItems = PLAN_SLOTS.flatMap((slot) =>
-    grouped[slot].filter((item) => !item.done),
+  const openItems = useMemo(
+    () => sortOpenTimelineItems(timelineItems, dayOrders?.[todayKey]),
+    [timelineItems, dayOrders, todayKey],
   )
   const doneItems = timelineItems.filter((item) => item.done)
 
@@ -243,6 +248,50 @@ function TodayView({
   function applyPlan(target: PlanTarget, value: PlanPickerValue) {
     const next = resolvePlanPicker(value, todayKey)
     setPlan(target, next.slot, next.dayKey)
+  }
+
+  function commitReorder(fromId: string, toId: string) {
+    if (fromId === toId) return
+    const ids = openItems.map((item) => item.id)
+    const next = reorderIds(ids, fromId, toId)
+    if (next.join() !== ids.join()) {
+      reorderTodayItems(next)
+    }
+  }
+
+  function hitTodayId(clientX: number, clientY: number): string | null {
+    const el = document.elementFromPoint(clientX, clientY)
+    const host = el?.closest('[data-today-id]') as HTMLElement | null
+    return host?.dataset.todayId ?? null
+  }
+
+  function onReorderPointerDown(event: React.PointerEvent, id: string) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+    dragIdRef.current = id
+    overIdRef.current = id
+    setDragId(id)
+    setOverId(id)
+  }
+
+  function onReorderPointerMove(event: React.PointerEvent) {
+    if (!dragIdRef.current) return
+    const nextOver = hitTodayId(event.clientX, event.clientY)
+    if (nextOver && nextOver !== overIdRef.current) {
+      overIdRef.current = nextOver
+      setOverId(nextOver)
+    }
+  }
+
+  function onReorderPointerUp() {
+    const fromId = dragIdRef.current
+    const toId = overIdRef.current
+    if (fromId && toId) commitReorder(fromId, toId)
+    dragIdRef.current = null
+    overIdRef.current = null
+    setDragId(null)
+    setOverId(null)
   }
 
   return (
@@ -266,38 +315,41 @@ function TodayView({
         {openItems.length === 0 ? (
           <p className="inline-empty">今天没事了，想做就加一件</p>
         ) : (
-          openItems.map((item, index) => {
-            const prevSlot = index > 0 ? openItems[index - 1].slot : null
-            const showSlot = item.slot !== prevSlot
-            return (
-              <div key={item.id} className="today-focus-item">
-                {showSlot && (
-                  <h3 className="today-slot-label">{PLAN_SLOT_LABELS[item.slot]}</h3>
-                )}
-                <TimelineRow
-                  item={item}
-                  rewardedHabitIds={rewardedHabitIds}
-                  onboardingStep={onboardingStep}
-                  editingId={editingId}
-                  editTitle={editTitle}
-                  editDifficulty={editDifficulty}
-                  editCategory={editCategory}
-                  setEditingId={setEditingId}
-                  setEditTitle={setEditTitle}
-                  setEditDifficulty={setEditDifficulty}
-                  setEditCategory={setEditCategory}
-                  editTask={editTask}
-                  completeTask={completeTask}
-                  deleteTask={deleteTask}
-                  adjustHabit={adjustHabit}
-                  completeProjectBlock={completeProjectBlock}
-                  setPlan={(value) => applyPlan(targetFor(item), value)}
-                  planValue={planPickerValue(plans ?? [], targetFor(item), todayKey)}
-                  allowDayShortcuts={item.kind !== 'habit'}
-                />
-              </div>
-            )
-          })
+          openItems.map((item) => (
+            <div
+              key={item.id}
+              className={`today-focus-item${dragId === item.id ? ' is-dragging' : ''}${
+                overId === item.id && dragId && dragId !== item.id ? ' is-drop-target' : ''
+              }`}
+              data-today-id={item.id}
+            >
+              <TimelineRow
+                item={item}
+                rewardedHabitIds={rewardedHabitIds}
+                onboardingStep={onboardingStep}
+                editingId={editingId}
+                editTitle={editTitle}
+                editDifficulty={editDifficulty}
+                editCategory={editCategory}
+                setEditingId={setEditingId}
+                setEditTitle={setEditTitle}
+                setEditDifficulty={setEditDifficulty}
+                setEditCategory={setEditCategory}
+                editTask={editTask}
+                completeTask={completeTask}
+                deleteTask={deleteTask}
+                adjustHabit={adjustHabit}
+                completeProjectBlock={completeProjectBlock}
+                setPlan={(value) => applyPlan(targetFor(item), value)}
+                planValue={planPickerValue(plans ?? [], targetFor(item), todayKey)}
+                allowDayShortcuts={item.kind !== 'habit'}
+                draggable
+                onReorderPointerDown={(event) => onReorderPointerDown(event, item.id)}
+                onReorderPointerMove={onReorderPointerMove}
+                onReorderPointerUp={onReorderPointerUp}
+              />
+            </div>
+          ))
         )}
       </div>
 
@@ -326,9 +378,8 @@ function TodayView({
                       {item.kind === 'block' ? `${item.project.title} · ` : ''}
                       {relativePlanDayLabel(item.dayKey, todayKey)}
                     </span>
-                    <PlanSlotPicker
+                    <PlanDayPicker
                       value={planPickerValue(plans ?? [], target, todayKey)}
-                      allowDayShortcuts
                       onChange={(value) => applyPlan(target, value)}
                     />
                   </div>
@@ -336,7 +387,7 @@ function TodayView({
                     <button
                       className="btn secondary"
                       type="button"
-                      onClick={() => applyPlan(target, 'anytime')}
+                      onClick={() => applyPlan(target, 'today')}
                     >
                       拉回今天
                     </button>
@@ -358,7 +409,7 @@ function TodayView({
                   <div key={`done-${item.id}`} className="row done task-row">
                     <div className="row-main">
                       <strong>{item.habit.title}</strong>
-                      <span className="muted">习惯 · {PLAN_SLOT_LABELS[item.slot]}</span>
+                      <span className="muted">习惯</span>
                     </div>
                     {item.habit.mode === 'check' && (
                       <button className="btn secondary" onClick={() => adjustHabit(item.habit.id, -1)}>
@@ -375,7 +426,7 @@ function TodayView({
                   <div key={`done-${item.id}`} className="row done task-row">
                     <div className="row-main">
                       <strong>{block.title}</strong>
-                      <span className="muted">{item.project.title} · {PLAN_SLOT_LABELS[item.slot]}</span>
+                      <span className="muted">{item.project.title}</span>
                     </div>
                     <button className="btn secondary" onClick={() => undoProjectBlock(item.project.id, item.blockId)}>
                       <GameIcon name="undo" />撤销
@@ -390,7 +441,7 @@ function TodayView({
                       <CategoryMark category={item.task.category} />
                       {item.task.title}
                     </strong>
-                    <span className="muted">+{item.task.awardedCoins ?? 0} 金币 · {PLAN_SLOT_LABELS[item.slot]}</span>
+                    <span className="muted">+{item.task.awardedCoins ?? 0} 金币</span>
                   </div>
                   {taskCompletedOn(item.task) && (
                     <button className="btn secondary" onClick={() => undoCompleteTask(item.task.id)}>
@@ -407,39 +458,29 @@ function TodayView({
   )
 }
 
-function PlanSlotPicker({
+function PlanDayPicker({
   value,
   onChange,
-  allowDayShortcuts,
 }: {
   value: PlanPickerValue
   onChange: (value: PlanPickerValue) => void
-  allowDayShortcuts?: boolean
 }) {
   return (
     <label className="slot-picker">
       <span className="visually-hidden">排到</span>
       <select
         value={value}
-        aria-label="排到哪天或时段"
+        aria-label="排到哪天"
         onChange={(event) => onChange(event.target.value as PlanPickerValue)}
       >
-        <optgroup label="今天">
-          {PLAN_SLOTS.map((option) => (
+        <option value="today">今天</option>
+        <optgroup label="换一天">
+          {PLAN_DAY_SHORTCUTS.map((option) => (
             <option key={option} value={option}>
-              {PLAN_SLOT_LABELS[option]}
+              {PLAN_DAY_SHORTCUT_LABELS[option]}
             </option>
           ))}
         </optgroup>
-        {allowDayShortcuts && (
-          <optgroup label="换一天">
-            {PLAN_DAY_SHORTCUTS.map((option) => (
-              <option key={option} value={option}>
-                {PLAN_DAY_SHORTCUT_LABELS[option]}
-              </option>
-            ))}
-          </optgroup>
-        )}
       </select>
     </label>
   )
@@ -465,6 +506,10 @@ function TimelineRow({
   setPlan,
   planValue,
   allowDayShortcuts,
+  draggable,
+  onReorderPointerDown,
+  onReorderPointerMove,
+  onReorderPointerUp,
 }: {
   item: TimelineItem
   rewardedHabitIds: string[]
@@ -485,6 +530,10 @@ function TimelineRow({
   setPlan: (value: PlanPickerValue) => void
   planValue: PlanPickerValue
   allowDayShortcuts?: boolean
+  draggable?: boolean
+  onReorderPointerDown?: (event: React.PointerEvent) => void
+  onReorderPointerMove?: (event: React.PointerEvent) => void
+  onReorderPointerUp?: () => void
 }) {
   const kindClass =
     item.kind === 'habit' ? 'is-habit' : item.kind === 'block' ? 'is-project' : 'is-todo'
@@ -515,8 +564,22 @@ function TimelineRow({
     <div
       className={`row productivity-row today-action-row timeline-row ${kindClass}${item.done ? ' done' : ''}${
         item.kind === 'task' && onboardingStep === 2 ? ' guide-target' : ''
-      }`}
+      }${draggable ? ' is-sortable' : ''}`}
     >
+      {draggable && !item.done && (
+        <button
+          type="button"
+          className="drag-handle"
+          aria-label="拖动排序"
+          title="拖动排序"
+          onPointerDown={onReorderPointerDown}
+          onPointerMove={onReorderPointerMove}
+          onPointerUp={onReorderPointerUp}
+          onPointerCancel={onReorderPointerUp}
+        >
+          <GameIcon name="grip" />
+        </button>
+      )}
       <div className="row-main">
         <strong className="task-title-with-category">
           {item.kind === 'task' && <CategoryMark category={item.task.category} />}
@@ -536,10 +599,9 @@ function TimelineRow({
           {item.kind === 'block' &&
             `${item.project.title} · ${projectProgress(item.project).percent}%`}
         </span>
-        {!item.done && (
-          <PlanSlotPicker
+        {!item.done && allowDayShortcuts && (
+          <PlanDayPicker
             value={planValue}
-            allowDayShortcuts={allowDayShortcuts}
             onChange={setPlan}
           />
         )}

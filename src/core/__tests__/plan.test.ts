@@ -3,12 +3,14 @@ import {
   addDaysToDayKey,
   buildDeferredItems,
   buildTimelineItems,
-  groupBySlot,
   movePlan,
   planPickerValue,
+  pruneDayOrders,
   relativePlanDayLabel,
   removePlansForTarget,
+  reorderIds,
   resolvePlanPicker,
+  sortOpenTimelineItems,
   upsertPlan,
 } from '../plan'
 import type { Habit, PlanAssignment, Project, Task } from '../types'
@@ -87,8 +89,8 @@ describe('day plan helpers', () => {
   })
 
   it('resolves picker shortcuts into day keys', () => {
-    expect(resolvePlanPicker('morning', today)).toEqual({
-      slot: 'morning',
+    expect(resolvePlanPicker('today', today)).toEqual({
+      slot: 'anytime',
       dayKey: today,
     })
     expect(resolvePlanPicker('tomorrow', today)).toEqual({
@@ -113,6 +115,19 @@ describe('day plan helpers', () => {
         today,
       ),
     ).toBe('day-after')
+    expect(
+      planPickerValue(
+        [
+          {
+            dayKey: today,
+            slot: 'morning',
+            target: { kind: 'task', id: 't1' },
+          },
+        ],
+        { kind: 'task', id: 't1' },
+        today,
+      ),
+    ).toBe('today')
   })
 
   it('lists deferred tasks and blocks for later days', () => {
@@ -150,7 +165,7 @@ describe('day plan helpers', () => {
     ])
   })
 
-  it('groups today items into timeline slots', () => {
+  it('sorts open items by day order, falling back to old slots', () => {
     const plans: PlanAssignment[] = [
       { dayKey: today, slot: 'morning', target: { kind: 'task', id: 't1' } },
       { dayKey: today, slot: 'afternoon', target: { kind: 'habit', id: 'h1' } },
@@ -163,10 +178,25 @@ describe('day plan helpers', () => {
       dayKey: today,
       now: new Date(`${today}T10:00:00`),
     })
-    const grouped = groupBySlot(items)
-    expect(grouped.morning.map((item) => item.id)).toEqual(['t1'])
-    expect(grouped.afternoon.map((item) => item.id)).toEqual(['h1'])
-    expect(grouped.anytime.map((item) => item.id).sort()).toEqual(['p1:b1', 't2'])
+    expect(sortOpenTimelineItems(items).map((item) => item.id)).toEqual([
+      't1',
+      'h1',
+      't2',
+      'p1:b1',
+    ])
+    expect(
+      sortOpenTimelineItems(items, ['t2', 'p1:b1', 't1', 'h1']).map((item) => item.id),
+    ).toEqual(['t2', 'p1:b1', 't1', 'h1'])
+  })
+
+  it('reorders ids and prunes day orders', () => {
+    expect(reorderIds(['a', 'b', 'c'], 'c', 'a')).toEqual(['c', 'a', 'b'])
+    expect(
+      pruneDayOrders(
+        { [today]: ['t1', 'h1', 't2'], '2026-08-12': ['t1'] },
+        ['t1', 'h1'],
+      ),
+    ).toEqual({ [today]: ['t2'] })
   })
 
   it('hides open tasks planned for another day', () => {
