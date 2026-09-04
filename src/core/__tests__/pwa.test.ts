@@ -7,6 +7,9 @@ describe('offline application shell', () => {
   const manifest = JSON.parse(
     readFileSync(resolve('public/manifest.webmanifest'), 'utf8'),
   )
+  const { version } = JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as {
+    version: string
+  }
 
   it('uses relative scope and installable icons for GitHub Pages', () => {
     expect(manifest.start_url).toBe('./')
@@ -22,7 +25,7 @@ describe('offline application shell', () => {
 
   it('caches the shell and visited art while retaining prompted updates', () => {
     expect(worker).toContain("const CACHE_PREFIX = 'productivity-valley-'")
-    expect(worker).toContain('const CACHE = `${CACHE_PREFIX}v0.10.0`')
+    expect(worker).toContain(`const CACHE = \`\${CACHE_PREFIX}v${version}\``)
     expect(worker).toContain('key.startsWith(CACHE_PREFIX)')
     expect(worker).toContain('const MAX_CACHE_ENTRIES = 120')
     expect(worker).toContain("url.pathname.includes('/art/')")
