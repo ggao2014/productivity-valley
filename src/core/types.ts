@@ -99,6 +99,8 @@ export interface PlanAssignment {
 
 export type HabitMode = 'check' | 'count'
 export type HabitScheduleType = 'daily' | 'weekdays' | 'selected' | 'weekly'
+/** Accumulation window for count-mode habits (e.g. 10 times per week). */
+export type HabitCountPeriod = 'day' | 'week' | 'month'
 
 export interface HabitSchedule {
   type: HabitScheduleType
@@ -118,12 +120,17 @@ export interface Habit {
   id: string
   title: string
   mode: HabitMode
+  /** Check: always 1. Count: times required within countPeriod. */
   targetCount: number
   schedule: HabitSchedule
+  /** Count mode only. Legacy count habits without this are treated as 'day'. */
+  countPeriod?: HabitCountPeriod
   active: boolean
   createdAt: string
   entries: HabitEntry[]
   weeklyRewardKeys: string[]
+  /** Month keys `YYYY-MM` that already paid a count-month completion reward. */
+  monthlyRewardKeys?: string[]
   category?: TaskCategory
 }
 

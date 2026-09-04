@@ -70,9 +70,12 @@ import {
   HABIT_REWARD,
   HABIT_REWARD_SLOTS,
   HABIT_WEEKLY_REWARD,
+  habitCountPeriod,
   habitEntryFor,
+  habitPeriodCount,
   habitWeeklyProgress,
   mondayKey,
+  monthKey,
   nextBlockReward,
   nextOpenBlock,
   PROJECT_REWARDS,
@@ -91,6 +94,7 @@ import type {
   TabId,
   Task,
   Habit,
+  HabitCountPeriod,
   HabitMode,
   HabitSchedule,
   ProjectSize,
@@ -376,7 +380,14 @@ interface Actions {
     startHour: TimetableHour,
     endHour: TimetableHour,
   ) => void
-  addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
+  addHabit: (
+    title: string,
+    mode: HabitMode,
+    targetCount: number,
+    schedule: HabitSchedule,
+    category?: TaskCategory,
+    countPeriod?: HabitCountPeriod,
+  ) => void
   adjustHabit: (id: string, delta: number) => void
   archiveHabit: (id: string) => void
   addProject: (title: string, size: ProjectSize, dueDate?: string, category?: TaskCategory) => string | undefined
@@ -882,19 +893,23 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     )
   },
 
-  addHabit: (title, mode, targetCount, schedule, category = 'errand') => {
+  addHabit: (title, mode, targetCount, schedule, category = 'errand', countPeriod) => {
     const clean = title.trim()
     if (!clean) return
+    const period: HabitCountPeriod | undefined =
+      mode === 'count' ? countPeriod ?? 'day' : undefined
     const habit: Habit = {
       id: uid(),
       title: clean,
       mode,
       targetCount: mode === 'check' ? 1 : Math.max(1, Math.floor(targetCount)),
-      schedule,
+      schedule: mode === 'count' ? { type: 'daily' } : schedule,
+      ...(period ? { countPeriod: period } : {}),
       active: true,
       createdAt: new Date().toISOString(),
       entries: [],
       weeklyRewardKeys: [],
+      monthlyRewardKeys: [],
       category,
     }
     set((s) => {
@@ -922,18 +937,44 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const dayKey = localDayKey(now)
       const existing = habitEntryFor(habit, dayKey)
       const beforeCount = existing?.count ?? 0
-      const count = Math.max(0, Math.min(habit.targetCount, beforeCount + delta))
+      const period = habitCountPeriod(habit)
+      const beforePeriodCount = habitPeriodCount(habit, now)
+      const periodTarget = Math.max(1, habit.targetCount)
+
+      let count: number
+      if (habit.mode === 'count' && period !== 'day') {
+        const otherCount = beforePeriodCount - beforeCount
+        const maxForDay = Math.max(0, periodTarget - otherCount)
+        count = Math.max(0, Math.min(maxForDay, beforeCount + delta))
+      } else {
+        count = Math.max(0, Math.min(periodTarget, beforeCount + delta))
+      }
       if (count === beforeCount) return s
-      const beforeDone = beforeCount >= habit.targetCount
-      const afterDone = count >= habit.targetCount
+
+      const afterPeriodCount = beforePeriodCount - beforeCount + count
+      const beforeDone =
+        habit.mode === 'count' && period !== 'day'
+          ? beforePeriodCount >= periodTarget
+          : beforeCount >= periodTarget
+      const afterDone =
+        habit.mode === 'count' && period !== 'day'
+          ? afterPeriodCount >= periodTarget
+          : count >= periodTarget
+
       const snapshot =
         s.habitRewardSnapshots[dayKey] ??
         s.habits.filter((item) => item.active).slice(0, HABIT_REWARD_SLOTS).map((item) => item.id)
       let coinsGain = 0
       let bondGain = 0
       const canReward = snapshot.includes(id)
-      const firstDailyReward = afterDone && !beforeDone && existing?.awardedCoins === undefined
-      if (canReward && firstDailyReward) {
+      const periodAlreadyRewarded =
+        habit.mode === 'count' && period === 'week'
+          ? habit.weeklyRewardKeys.includes(mondayKey(now))
+          : habit.mode === 'count' && period === 'month'
+            ? (habit.monthlyRewardKeys ?? []).includes(monthKey(now))
+            : existing?.awardedCoins !== undefined
+      const firstPeriodReward = afterDone && !beforeDone && !periodAlreadyRewarded
+      if (canReward && firstPeriodReward) {
         coinsGain += HABIT_REWARD.coins
         bondGain += Math.min(HABIT_REWARD.bond, Math.max(0, BOND_DAILY_CAP - (s.bond + bondGain)))
       }
@@ -942,32 +983,55 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         count,
         completedAt: afterDone ? existing?.completedAt ?? now.toISOString() : undefined,
         awardedCoins:
-          existing?.awardedCoins ?? (canReward && firstDailyReward ? HABIT_REWARD.coins : undefined),
+          existing?.awardedCoins ?? (canReward && firstPeriodReward ? HABIT_REWARD.coins : undefined),
         awardedBond:
-          existing?.awardedBond ?? (canReward && firstDailyReward ? bondGain : undefined),
+          existing?.awardedBond ?? (canReward && firstPeriodReward ? bondGain : undefined),
       }
       let updatedHabit: Habit = {
         ...habit,
         entries: [...habit.entries.filter((item) => item.dayKey !== dayKey), entry],
       }
-      const weekKey = mondayKey(now)
-      const weekly = habitWeeklyProgress(updatedHabit, now)
-      const weeklyReward =
-        canReward &&
-        weekly.completed >= weekly.target &&
-        !updatedHabit.weeklyRewardKeys.includes(weekKey)
-      if (weeklyReward) {
-        coinsGain += HABIT_WEEKLY_REWARD.coins
-        const weeklyBond = Math.min(
-          HABIT_WEEKLY_REWARD.bond,
-          Math.max(0, BOND_DAILY_CAP - (s.bond + bondGain)),
-        )
-        bondGain += weeklyBond
-        updatedHabit = {
-          ...updatedHabit,
-          weeklyRewardKeys: [...updatedHabit.weeklyRewardKeys, weekKey],
+
+      // Check habits (and count-per-day) still earn the weekly day-quota bonus.
+      if (!(habit.mode === 'count' && period !== 'day')) {
+        const weekKey = mondayKey(now)
+        const weekly = habitWeeklyProgress(updatedHabit, now)
+        const weeklyReward =
+          canReward &&
+          weekly.completed >= weekly.target &&
+          !updatedHabit.weeklyRewardKeys.includes(weekKey)
+        if (weeklyReward) {
+          coinsGain += HABIT_WEEKLY_REWARD.coins
+          const weeklyBond = Math.min(
+            HABIT_WEEKLY_REWARD.bond,
+            Math.max(0, BOND_DAILY_CAP - (s.bond + bondGain)),
+          )
+          bondGain += weeklyBond
+          updatedHabit = {
+            ...updatedHabit,
+            weeklyRewardKeys: [...updatedHabit.weeklyRewardKeys, weekKey],
+          }
+        }
+      } else if (period === 'week' && canReward && firstPeriodReward) {
+        // Mark week period paid so repeats in the same week do not double-pay.
+        const weekKey = mondayKey(now)
+        if (!updatedHabit.weeklyRewardKeys.includes(weekKey)) {
+          updatedHabit = {
+            ...updatedHabit,
+            weeklyRewardKeys: [...updatedHabit.weeklyRewardKeys, weekKey],
+          }
+        }
+      } else if (period === 'month' && canReward && firstPeriodReward) {
+        const key = monthKey(now)
+        const monthly = updatedHabit.monthlyRewardKeys ?? []
+        if (!monthly.includes(key)) {
+          updatedHabit = {
+            ...updatedHabit,
+            monthlyRewardKeys: [...monthly, key],
+          }
         }
       }
+
       return persist({
         ...s,
         habits: s.habits.map((item) => (item.id === id ? updatedHabit : item)),

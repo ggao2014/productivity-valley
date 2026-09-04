@@ -4487,6 +4487,11 @@ button {
 .productivity-form label{display:grid;gap:6px;color:var(--ink-soft);font-size:.8rem;font-weight:700}
 .productivity-form input,.productivity-form select,.block-composer input,.block-composer select{min-width:0;padding:10px 11px;border:1px solid rgba(96,73,45,.26);border-radius:9px;color:var(--ink);background:#fffdf7;font:inherit}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.productivity-form>.btn{justify-self:start}
+.habit-form-section{margin:0;padding:12px;border:1px dashed rgba(96,73,45,.2);border-radius:12px;background:rgba(255,253,247,.55)}
+.habit-form-section legend{padding:0 4px;color:var(--ink);font-size:.84rem;font-weight:800}
+.habit-form-section .form-grid{margin-top:4px}
+.habit-form-section .weekday-picker{margin-top:10px}
+.habit-form-hint{margin:8px 0 0;color:var(--ink-soft);font-size:.74rem;font-weight:600;line-height:1.45}
 .form-actions{display:flex;gap:8px}
 .form-actions .btn{justify-self:start}
 .project-create-toggle{margin-top:4px}

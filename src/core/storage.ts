@@ -174,10 +174,14 @@ function looksLikeState(value: unknown): value is Partial<PersistedState> {
       ['daily', 'weekdays', 'selected', 'weekly'].includes(
         String(habit.schedule.type),
       ) &&
+      (habit.countPeriod === undefined ||
+        ['day', 'week', 'month'].includes(String(habit.countPeriod))) &&
       typeof habit.active === 'boolean' &&
       typeof habit.createdAt === 'string' &&
       Array.isArray(habit.entries) &&
       Array.isArray(habit.weeklyRewardKeys) &&
+      (habit.monthlyRewardKeys === undefined ||
+        Array.isArray(habit.monthlyRewardKeys)) &&
       (habit.category === undefined ||
         ['work', 'study', 'life', 'health', 'errand'].includes(String(habit.category))),
   )
