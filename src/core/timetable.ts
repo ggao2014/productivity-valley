@@ -102,6 +102,36 @@ export function sanitizeTimetable(
   return next
 }
 
+export function normalizeHourRange(
+  startHour: TimetableHour,
+  endHour: TimetableHour,
+): { startHour: TimetableHour; endHour: TimetableHour } {
+  return startHour <= endHour
+    ? { startHour, endHour }
+    : { startHour: endHour, endHour: startHour }
+}
+
+export function hoursInRange(
+  startHour: TimetableHour,
+  endHour: TimetableHour,
+): TimetableHour[] {
+  const range = normalizeHourRange(startHour, endHour)
+  const hours: TimetableHour[] = []
+  for (let hour = range.startHour; hour <= range.endHour; hour += 1) {
+    if (isTimetableHour(hour)) hours.push(hour)
+  }
+  return hours
+}
+
+export function isHourInRange(
+  hour: TimetableHour,
+  startHour: TimetableHour,
+  endHour: TimetableHour,
+): boolean {
+  const range = normalizeHourRange(startHour, endHour)
+  return hour >= range.startHour && hour <= range.endHour
+}
+
 export function upsertTimetableCell(
   timetable: Record<string, TimetableCell>,
   weekday: TimetableWeekday,
@@ -119,6 +149,21 @@ export function upsertTimetableCell(
   return next
 }
 
+/** Write the same mark across contiguous hours on one weekday. */
+export function upsertTimetableRange(
+  timetable: Record<string, TimetableCell>,
+  weekday: TimetableWeekday,
+  startHour: TimetableHour,
+  endHour: TimetableHour,
+  value: Partial<TimetableCell>,
+): Record<string, TimetableCell> {
+  let next = timetable
+  for (const hour of hoursInRange(startHour, endHour)) {
+    next = upsertTimetableCell(next, weekday, hour, value)
+  }
+  return next
+}
+
 export function clearTimetableCell(
   timetable: Record<string, TimetableCell>,
   weekday: TimetableWeekday,
@@ -128,6 +173,19 @@ export function clearTimetableCell(
   if (!(key in timetable)) return timetable
   const next = { ...timetable }
   delete next[key]
+  return next
+}
+
+export function clearTimetableRange(
+  timetable: Record<string, TimetableCell>,
+  weekday: TimetableWeekday,
+  startHour: TimetableHour,
+  endHour: TimetableHour,
+): Record<string, TimetableCell> {
+  let next = timetable
+  for (const hour of hoursInRange(startHour, endHour)) {
+    next = clearTimetableCell(next, weekday, hour)
+  }
   return next
 }
 
@@ -164,4 +222,20 @@ export function timetableCellLabel(
   hour: TimetableHour,
 ): string {
   return `周${TIMETABLE_WEEKDAY_LABELS[weekday]} ${formatTimetableHour(hour)}`
+}
+
+/**
+ * Label for a selected hour range. Multi-hour ranges use exclusive end clock
+ * time so 9–11 reads as "9:00–12:00" (three hour slots).
+ */
+export function timetableRangeLabel(
+  weekday: TimetableWeekday,
+  startHour: TimetableHour,
+  endHour: TimetableHour,
+): string {
+  const range = normalizeHourRange(startHour, endHour)
+  if (range.startHour === range.endHour) {
+    return timetableCellLabel(weekday, range.startHour)
+  }
+  return `周${TIMETABLE_WEEKDAY_LABELS[weekday]} ${formatTimetableHour(range.startHour)}–${range.endHour + 1}:00`
 }

@@ -2,15 +2,21 @@ import { describe, expect, it } from 'vitest'
 import {
   cellsForWeekday,
   clearTimetableCell,
+  clearTimetableRange,
   formatTimetableHour,
+  hoursInRange,
+  isHourInRange,
   markedTimetableCount,
+  normalizeHourRange,
   normalizeTimetableTitle,
   parseTimetableCellKey,
   sanitizeTimetable,
   sanitizeTimetableCell,
   timetableCellKey,
   timetableCellLabel,
+  timetableRangeLabel,
   upsertTimetableCell,
+  upsertTimetableRange,
 } from '../timetable'
 
 describe('preview timetable', () => {
@@ -57,6 +63,28 @@ describe('preview timetable', () => {
     expect(clearTimetableCell(second, 1, 9)).toEqual({
       '3:14': { title: '开会', category: 'work' },
     })
+  })
+
+  it('normalizes contiguous hour ranges for multi-slot marks', () => {
+    expect(normalizeHourRange(11, 9)).toEqual({ startHour: 9, endHour: 11 })
+    expect(hoursInRange(11, 9)).toEqual([9, 10, 11])
+    expect(isHourInRange(10, 11, 9)).toBe(true)
+    expect(isHourInRange(8, 11, 9)).toBe(false)
+    expect(timetableRangeLabel(1, 9, 9)).toBe('周一 9:00')
+    expect(timetableRangeLabel(1, 11, 9)).toBe('周一 9:00–12:00')
+  })
+
+  it('upserts and clears a weekday hour range as one activity', () => {
+    const marked = upsertTimetableRange({}, 2, 14, 16, {
+      title: '开会',
+      category: 'work',
+    })
+    expect(marked).toEqual({
+      '2:14': { title: '开会', category: 'work' },
+      '2:15': { title: '开会', category: 'work' },
+      '2:16': { title: '开会', category: 'work' },
+    })
+    expect(clearTimetableRange(marked, 2, 16, 14)).toEqual({})
   })
 
   it('drops legacy tone marks when sanitizing', () => {

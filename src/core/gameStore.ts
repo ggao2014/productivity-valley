@@ -48,8 +48,10 @@ import {
 } from './plan'
 import {
   clearTimetableCell,
+  clearTimetableRange,
   sanitizeTimetable,
   upsertTimetableCell,
+  upsertTimetableRange,
 } from './timetable'
 import {
   assignResident,
@@ -361,7 +363,19 @@ interface Actions {
     title: string,
     category?: TaskCategory | null,
   ) => void
+  setTimetableRange: (
+    weekday: TimetableWeekday,
+    startHour: TimetableHour,
+    endHour: TimetableHour,
+    title: string,
+    category?: TaskCategory | null,
+  ) => void
   clearTimetableMark: (weekday: TimetableWeekday, hour: TimetableHour) => void
+  clearTimetableRangeMarks: (
+    weekday: TimetableWeekday,
+    startHour: TimetableHour,
+    endHour: TimetableHour,
+  ) => void
   addHabit: (title: string, mode: HabitMode, targetCount: number, schedule: HabitSchedule, category?: TaskCategory) => void
   adjustHabit: (id: string, delta: number) => void
   archiveHabit: (id: string) => void
@@ -826,11 +840,44 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     })
   },
 
+  setTimetableRange: (weekday, startHour, endHour, title, category) => {
+    set((s) => {
+      const nextCategory = category === null ? undefined : category
+      return persist({
+        ...s,
+        timetable: upsertTimetableRange(
+          s.timetable ?? {},
+          weekday,
+          startHour,
+          endHour,
+          {
+            title,
+            category: nextCategory,
+          },
+        ),
+      })
+    })
+  },
+
   clearTimetableMark: (weekday, hour) => {
     set((s) =>
       persist({
         ...s,
         timetable: clearTimetableCell(s.timetable ?? {}, weekday, hour),
+      }),
+    )
+  },
+
+  clearTimetableRangeMarks: (weekday, startHour, endHour) => {
+    set((s) =>
+      persist({
+        ...s,
+        timetable: clearTimetableRange(
+          s.timetable ?? {},
+          weekday,
+          startHour,
+          endHour,
+        ),
       }),
     )
   },
