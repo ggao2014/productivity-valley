@@ -54,6 +54,20 @@ describe('preview timetable', () => {
     expect(useGameStore.getState().timetable).toEqual({})
     expect(useGameStore.getState().toast).toBeNull()
   })
+
+  it('writes and clears a multi-hour activity across contiguous slots', () => {
+    useGameStore.setState({ toast: null, timetable: {} })
+    useGameStore.getState().setTimetableRange(3, 10, 12, '深度工作', 'work')
+    expect(useGameStore.getState().timetable).toEqual({
+      '3:10': { title: '深度工作', category: 'work' },
+      '3:11': { title: '深度工作', category: 'work' },
+      '3:12': { title: '深度工作', category: 'work' },
+    })
+    expect(useGameStore.getState().toast).toBeNull()
+    useGameStore.getState().clearTimetableRangeMarks(3, 12, 10)
+    expect(useGameStore.getState().timetable).toEqual({})
+    expect(useGameStore.getState().toast).toBeNull()
+  })
 })
 
 describe('task rewards', () => {
