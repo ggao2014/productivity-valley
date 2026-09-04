@@ -22,7 +22,7 @@ export function RewardFeedback() {
         : reward.kind === 'project_block'
           ? '完成一步'
           : reward.kind === 'habit'
-            ? '习惯已打卡'
+            ? '习惯已完成'
             : '待办完成'
 
   return (

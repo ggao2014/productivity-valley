@@ -1,6 +1,7 @@
 import type {
   Difficulty,
   Habit,
+  HabitSchedule,
   Project,
   ProjectMilestone,
   ProjectSize,
@@ -127,6 +128,40 @@ export function habitWeeklyProgress(habit: Habit, now = new Date()) {
     target: habitWeeklyTarget(habit, now),
   }
 }
+
+const HABIT_WEEKDAY_LABELS: Record<number, string> = {
+  0: '日',
+  1: '一',
+  2: '二',
+  3: '三',
+  4: '四',
+  5: '五',
+  6: '六',
+}
+
+/** Calendar cadence only — “天” not “次”, to avoid colliding with daily count targets. */
+export function habitScheduleLabel(schedule: HabitSchedule): string {
+  if (schedule.type === 'daily') return '每天'
+  if (schedule.type === 'weekdays') return '工作日'
+  if (schedule.type === 'weekly') return `每周 ${schedule.weeklyTarget ?? 1} 天`
+  const days = [...(schedule.days ?? [])].sort((a, b) => {
+    const rank = (day: number) => (day === 0 ? 7 : day)
+    return rank(a) - rank(b)
+  })
+  if (days.length === 0) return '指定星期'
+  return `周${days.map((day) => HABIT_WEEKDAY_LABELS[day] ?? day).join('、')}`
+}
+
+/** How the habit is logged within a due day. */
+export function habitModeLabel(habit: Pick<Habit, 'mode' | 'targetCount'>): string {
+  if (habit.mode === 'count') return `每天 ${habit.targetCount} 次`
+  return '打卡'
+}
+
+export function habitSummaryLabel(habit: Pick<Habit, 'mode' | 'targetCount' | 'schedule'>): string {
+  return `${habitScheduleLabel(habit.schedule)} · ${habitModeLabel(habit)}`
+}
+
 
 export function projectProgress(project: Project) {
   const total = project.blocks.reduce(

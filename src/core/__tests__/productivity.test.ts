@@ -4,6 +4,8 @@ import {
   PROJECT_REWARDS,
   crossedMilestones,
   habitDueOn,
+  habitScheduleLabel,
+  habitSummaryLabel,
   habitWeeklyProgress,
   nextBlockReward,
   projectProgress,
@@ -45,6 +47,25 @@ describe('habit schedules and rewards', () => {
     const weekly = { ...base, schedule: { type: 'weekly', weeklyTarget: 2 } as const }
     expect(habitDueOn(weekly, now)).toBe(true)
     expect(habitWeeklyProgress(weekly, now)).toEqual({ completed: 0, target: 2 })
+  })
+
+  it('labels schedule as days and mode as daily counts without mixing 次', () => {
+    expect(habitScheduleLabel({ type: 'weekly', weeklyTarget: 3 })).toBe('每周 3 天')
+    expect(habitScheduleLabel({ type: 'selected', days: [1, 3, 0] })).toBe('周一、三、日')
+    expect(
+      habitSummaryLabel({
+        mode: 'count',
+        targetCount: 5,
+        schedule: { type: 'weekly', weeklyTarget: 3 },
+      }),
+    ).toBe('每周 3 天 · 每天 5 次')
+    expect(
+      habitSummaryLabel({
+        mode: 'check',
+        targetCount: 1,
+        schedule: { type: 'daily' },
+      }),
+    ).toBe('每天 · 打卡')
   })
 
   it('locks the first five reward-eligible habits and pays daily plus weekly reward once', () => {
