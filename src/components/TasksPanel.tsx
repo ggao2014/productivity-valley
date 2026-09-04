@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { PreviewTimetable } from './PreviewTimetable'
 import { TodayChores } from './HouseholdPanel'
 import { GameIcon } from '../assets/icons/GameIcon'
+import { NumberField } from './NumberField'
 import { TASK_REWARDS } from '../core/constants'
+import { clampInt } from '../core/numberInput'
 import { activeDayStreak, localDayKey, taskCompletedOn, todayTaskProgress } from '../core/economy'
 import { useGameStore } from '../core/gameStore'
 import {
@@ -640,18 +642,20 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
   function submit() {
     if (!title.trim()) return
     if (mode === 'check' && scheduleType === 'selected' && days.length === 0) return
+    const nextTarget = clampInt(target, 1)
+    const nextWeeklyTarget = clampInt(weeklyTarget, 1, 7)
     const schedule: HabitSchedule =
       mode === 'count'
         ? { type: 'daily' }
         : scheduleType === 'selected'
           ? { type: scheduleType, days }
           : scheduleType === 'weekly'
-            ? { type: scheduleType, weeklyTarget }
+            ? { type: scheduleType, weeklyTarget: nextWeeklyTarget }
             : { type: scheduleType }
     addHabit(
       title,
       mode,
-      mode === 'count' ? target : 1,
+      mode === 'count' ? nextTarget : 1,
       schedule,
       category,
       mode === 'count' ? countPeriod : undefined,
@@ -718,14 +722,11 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
               {scheduleType === 'weekly' && (
                 <label>
                   每周几天
-                  <input
-                    type="number"
-                    min="1"
-                    max="7"
+                  <NumberField
+                    min={1}
+                    max={7}
                     value={weeklyTarget}
-                    onChange={(event) =>
-                      setWeeklyTarget(Math.max(1, Math.min(7, Number(event.target.value))))
-                    }
+                    onValueChange={setWeeklyTarget}
                   />
                 </label>
               )}
@@ -771,12 +772,7 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
               </label>
               <label>
                 目标次数
-                <input
-                  type="number"
-                  min="1"
-                  value={target}
-                  onChange={(event) => setTarget(Math.max(1, Number(event.target.value)))}
-                />
+                <NumberField min={1} value={target} onValueChange={setTarget} />
               </label>
             </div>
             <p className="habit-form-hint">

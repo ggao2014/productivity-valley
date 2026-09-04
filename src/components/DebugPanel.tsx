@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { NumberField } from './NumberField'
 import { NPC_DEFS } from '../core/npcs'
 import { useGameStore } from '../core/gameStore'
+import { clampInt } from '../core/numberInput'
 
 export function DebugPanel() {
   const state = useGameStore()
@@ -42,7 +44,13 @@ export function DebugPanel() {
             onClick={(event) => event.stopPropagation()}
             onSubmit={(event) => {
               event.preventDefault()
-              debugSetValues({ coins, bond, npcId, friendship, romance })
+              debugSetValues({
+                coins: clampInt(coins, 0),
+                bond: clampInt(bond, 0, 10),
+                npcId,
+                friendship: clampInt(friendship, 0),
+                romance: clampInt(romance, 0),
+              })
               setOpen(false)
             }}
           >
@@ -51,15 +59,40 @@ export function DebugPanel() {
               <span>仅本地开发</span>
             </div>
             <div className="debug-grid">
-              <label>金币<input type="number" min="0" value={coins} onChange={(event) => setCoins(Number(event.target.value))} /></label>
-              <label>精力<input type="number" min="0" max="10" value={bond} onChange={(event) => setBond(Number(event.target.value))} /></label>
-              <label className="debug-wide">镇民<select value={npcId} onChange={(event) => selectNpc(event.target.value)}>{NPC_DEFS.map((npc) => <option key={npc.id} value={npc.id}>{npc.name}</option>)}</select></label>
-              <label>友情<input type="number" min="0" value={friendship} onChange={(event) => setFriendship(Number(event.target.value))} /></label>
-              <label>爱情<input type="number" min="0" value={romance} onChange={(event) => setRomance(Number(event.target.value))} /></label>
+              <label>
+                金币
+                <NumberField min={0} value={coins} onValueChange={setCoins} />
+              </label>
+              <label>
+                精力
+                <NumberField min={0} max={10} value={bond} onValueChange={setBond} />
+              </label>
+              <label className="debug-wide">
+                镇民
+                <select value={npcId} onChange={(event) => selectNpc(event.target.value)}>
+                  {NPC_DEFS.map((npc) => (
+                    <option key={npc.id} value={npc.id}>
+                      {npc.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                友情
+                <NumberField min={0} value={friendship} onValueChange={setFriendship} />
+              </label>
+              <label>
+                爱情
+                <NumberField min={0} value={romance} onValueChange={setRomance} />
+              </label>
             </div>
             <div className="actions">
-              <button className="btn" type="submit">应用</button>
-              <button className="btn secondary" type="button" onClick={() => setOpen(false)}>取消</button>
+              <button className="btn" type="submit">
+                应用
+              </button>
+              <button className="btn secondary" type="button" onClick={() => setOpen(false)}>
+                取消
+              </button>
             </div>
           </form>
         </div>
