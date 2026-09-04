@@ -2,6 +2,7 @@ import type { Habit, PlanAssignment, PlanSlot, PlanTarget, Project, Task } from 
 import { localDayKey } from './economy'
 import { habitCompletedOn, habitDueOn } from './productivity'
 
+/** Kept for save compatibility and migrating old slot-based order. */
 export const PLAN_SLOTS: PlanSlot[] = ['morning', 'afternoon', 'evening', 'anytime']
 
 export const PLAN_SLOT_LABELS: Record<PlanSlot, string> = {
@@ -73,7 +74,7 @@ const PLAN_DAY_SHORTCUT_OFFSETS: Record<PlanDayShortcut, number> = {
   later: 7,
 }
 
-export type PlanPickerValue = PlanSlot | PlanDayShortcut
+export type PlanPickerValue = 'today' | PlanDayShortcut
 
 export function resolvePlanPicker(
   value: PlanPickerValue,
@@ -85,7 +86,7 @@ export function resolvePlanPicker(
       dayKey: addDaysToDayKey(todayKey, PLAN_DAY_SHORTCUT_OFFSETS[value]),
     }
   }
-  return { slot: value, dayKey: todayKey }
+  return { slot: 'anytime', dayKey: todayKey }
 }
 
 export function planPickerValue(
@@ -94,7 +95,7 @@ export function planPickerValue(
   todayKey = localDayKey(),
 ): PlanPickerValue {
   const todayPlan = findPlan(plans, todayKey, target)
-  if (todayPlan) return todayPlan.slot
+  if (todayPlan) return 'today'
 
   const future = plans
     .filter(
@@ -102,7 +103,7 @@ export function planPickerValue(
     )
     .sort((a, b) => a.dayKey.localeCompare(b.dayKey))[0]
 
-  if (!future) return 'anytime'
+  if (!future) return 'today'
 
   for (const shortcut of PLAN_DAY_SHORTCUTS) {
     if (
@@ -406,4 +407,54 @@ export function groupBySlot(
   }
   for (const item of items) groups[item.slot].push(item)
   return groups
+}
+
+/** Flat open list: prefer saved day order, else migrate from old slot order. */
+export function sortOpenTimelineItems(
+  items: TimelineItem[],
+  dayOrder?: string[],
+): TimelineItem[] {
+  const open = items.filter((item) => !item.done)
+  if (dayOrder && dayOrder.length > 0) {
+    const rank = new Map(dayOrder.map((id, index) => [id, index]))
+    return [...open].sort((a, b) => {
+      const rankA = rank.get(a.id)
+      const rankB = rank.get(b.id)
+      if (rankA !== undefined && rankB !== undefined) return rankA - rankB
+      if (rankA !== undefined) return -1
+      if (rankB !== undefined) return 1
+      const slotDiff = PLAN_SLOTS.indexOf(a.slot) - PLAN_SLOTS.indexOf(b.slot)
+      if (slotDiff !== 0) return slotDiff
+      return a.id.localeCompare(b.id)
+    })
+  }
+  return PLAN_SLOTS.flatMap((slot) => open.filter((item) => item.slot === slot))
+}
+
+export function reorderIds(
+  ids: string[],
+  fromId: string,
+  toId: string,
+): string[] {
+  const from = ids.indexOf(fromId)
+  const to = ids.indexOf(toId)
+  if (from < 0 || to < 0 || from === to) return ids
+  const next = [...ids]
+  const [moved] = next.splice(from, 1)
+  next.splice(to, 0, moved)
+  return next
+}
+
+export function pruneDayOrders(
+  dayOrders: Record<string, string[]>,
+  removeIds: string[],
+): Record<string, string[]> {
+  if (removeIds.length === 0) return dayOrders
+  const remove = new Set(removeIds)
+  const next: Record<string, string[]> = {}
+  for (const [dayKey, ids] of Object.entries(dayOrders)) {
+    const filtered = ids.filter((id) => !remove.has(id))
+    if (filtered.length > 0) next[dayKey] = filtered
+  }
+  return next
 }

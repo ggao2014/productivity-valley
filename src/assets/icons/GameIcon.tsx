@@ -18,6 +18,7 @@ export type GameIconName =
   | 'spark'
   | 'settings'
   | 'grid'
+  | 'grip'
 
 interface GameIconProps {
   name: GameIconName
@@ -78,6 +79,16 @@ export function GameIcon({ name, className = '' }: GameIconProps) {
         <>
           <rect x="3.5" y="3.5" width="17" height="17" rx="2.2" />
           <path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17" />
+        </>
+      )}
+      {name === 'grip' && (
+        <>
+          <circle cx="9" cy="7" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="7" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="9" cy="17" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="17" r="1.2" fill="currentColor" stroke="none" />
         </>
       )}
       {name === 'bamboo' && (

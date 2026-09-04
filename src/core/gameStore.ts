@@ -44,6 +44,7 @@ import {
   removePlansForProject,
   removePlansForTarget,
   movePlan,
+  pruneDayOrders,
   relativePlanDayLabel,
 } from './plan'
 import {
@@ -188,6 +189,7 @@ function createInitial(): GameState {
     habits: [],
     projects: [],
     plans: [],
+    dayOrders: {},
     timetable: {},
     habitRewardSnapshots: {},
     choreCompletions: {},
@@ -361,6 +363,7 @@ interface Actions {
   undoCompleteTask: (id: string) => void
   deleteTask: (id: string) => void
   setPlan: (target: PlanTarget, slot: PlanSlot, dayKey?: string) => void
+  reorderTodayItems: (orderedIds: string[]) => void
   setTimetableCell: (
     weekday: TimetableWeekday,
     hour: TimetableHour,
@@ -473,6 +476,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       habits: (saved.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
       projects: (saved.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
       plans: saved.plans ?? [],
+      dayOrders: saved.dayOrders ?? {},
       timetable: sanitizeTimetable(saved.timetable),
       rooms: normalizedRooms,
       courtyardLevel,
@@ -658,6 +662,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         habits: (imported.habits ?? []).map((habit) => ({ ...habit, category: habit.category ?? 'errand' })),
         projects: (imported.projects ?? []).map((project) => ({ ...project, category: project.category ?? 'errand' })),
         plans: imported.plans ?? [],
+        dayOrders: imported.dayOrders ?? {},
         timetable: sanitizeTimetable(imported.timetable),
         rooms: normalizedRooms,
         courtyardLevel,
@@ -816,6 +821,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
         ...s,
         tasks: s.tasks.filter((t) => t.id !== id),
         plans: removePlansForTarget(s.plans ?? [], { kind: 'task', id }),
+        dayOrders: pruneDayOrders(s.dayOrders ?? {}, [id]),
       }),
     )
   },
@@ -826,14 +832,39 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
       const key = dayKey ?? today
       const toast =
         key === today
-          ? slot === 'anytime'
-            ? '已放到有空再做'
-            : `已排到${slot === 'morning' ? '上午' : slot === 'afternoon' ? '下午' : '晚上'}`
+          ? '已拉回今天'
           : `已排到${relativePlanDayLabel(key, today)}`
+      const itemId =
+        target.kind === 'task' || target.kind === 'habit'
+          ? target.id
+          : `${target.projectId}:${target.blockId}`
+      let dayOrders = s.dayOrders ?? {}
+      if (key !== today) {
+        dayOrders = pruneDayOrders(dayOrders, [itemId])
+      } else if (!(dayOrders[today] ?? []).includes(itemId)) {
+        dayOrders = {
+          ...dayOrders,
+          [today]: [...(dayOrders[today] ?? []), itemId],
+        }
+      }
       return persist({
         ...s,
         plans: movePlan(s.plans ?? [], target, slot, key),
+        dayOrders,
         toast,
+      })
+    })
+  },
+
+  reorderTodayItems: (orderedIds) => {
+    set((s) => {
+      const today = localDayKey()
+      return persist({
+        ...s,
+        dayOrders: {
+          ...(s.dayOrders ?? {}),
+          [today]: orderedIds,
+        },
       })
     })
   },
@@ -1064,6 +1095,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
           habit.id === id ? { ...habit, active: false } : habit,
         ),
         plans: removePlansForTarget(s.plans ?? [], { kind: 'habit', id }),
+        dayOrders: pruneDayOrders(s.dayOrders ?? {}, [id]),
       }),
     ),
 
@@ -1148,6 +1180,7 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
             : project,
         ),
         plans: removePlansForBlock(s.plans ?? [], projectId, blockId),
+        dayOrders: pruneDayOrders(s.dayOrders ?? {}, [`${projectId}:${blockId}`]),
       }),
     ),
 
@@ -1297,15 +1330,18 @@ export const useGameStore = create<GameState & Actions>((set, get) => ({
     }),
 
   archiveProject: (id) =>
-    set((s) =>
-      persist({
+    set((s) => {
+      const project = s.projects.find((entry) => entry.id === id)
+      const blockIds = (project?.blocks ?? []).map((block) => `${id}:${block.id}`)
+      return persist({
         ...s,
-        projects: s.projects.map((project) =>
-          project.id === id ? { ...project, status: 'archived' } : project,
+        projects: s.projects.map((entry) =>
+          entry.id === id ? { ...entry, status: 'archived' } : entry,
         ),
         plans: removePlansForProject(s.plans ?? [], id),
-      }),
-    ),
+        dayOrders: pruneDayOrders(s.dayOrders ?? {}, blockIds),
+      })
+    }),
 
   buyRoom: (type) => {
     set((s) => {

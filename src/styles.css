@@ -4549,6 +4549,31 @@ button {
 .today-quick-meta select { min-width: 56px; min-height: 32px; padding: 4px 8px; font-size: .78rem; }
 .today-focus-list { display: grid; gap: 8px; margin-bottom: 12px; }
 .today-focus-item { display: grid; gap: 6px; }
+.today-focus-item.is-dragging { opacity: 0.55; }
+.today-focus-item.is-drop-target .today-action-row {
+  outline: 2px solid rgba(118, 147, 108, 0.55);
+  outline-offset: 1px;
+}
+.today-action-row.is-sortable {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  padding-left: 8px;
+}
+.drag-handle {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+.drag-handle:active { cursor: grabbing; }
+.drag-handle .game-icon { width: 14px; height: 14px; }
 .today-slot-label {
   margin: 6px 2px 0;
   color: var(--moss-deep);
@@ -4770,6 +4795,22 @@ button {
   .today-action-row > .today-complete,
   .today-action-row > .task-actions { grid-column: 2; grid-row: 1 / span 2; }
   .today-action-row .task-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 105px; }
+  .today-action-row.is-sortable {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding-left: 6px;
+  }
+  .today-action-row.is-sortable .drag-handle {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+  .today-action-row.is-sortable .row-main { grid-column: 2; grid-row: 1; }
+  .today-action-row.is-sortable .today-reward { grid-column: 2; grid-row: 2; }
+  .today-action-row.is-sortable > .today-complete,
+  .today-action-row.is-sortable > .task-actions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
 }
 @media(max-width:700px){.habit-grid,.form-grid,.project-workspace{grid-template-columns:1fr}.project-list{display:flex;flex-direction:column}.productivity-section-heading{align-items:center;flex-direction:row;gap:8px}.project-block{align-items:flex-start;flex-direction:column}.block-actions{width:100%;flex-wrap:wrap}.block-composer{grid-template-columns:minmax(0,1fr) 72px}.block-composer .btn{grid-column:1/-1}.project-detail-heading{align-items:flex-start}.today-progress-meters>div{padding-inline:6px}}
 
