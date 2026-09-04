@@ -197,7 +197,6 @@ export function PreviewTimetable() {
       <div className="preview-day-editor">
         <div className="preview-day-editor-head">
           <strong>{timetableRangeLabel(weekday, startHour, endHour)}</strong>
-          <small className="timetable-drag-hint">拖拽可跨多小时</small>
         </div>
         <input
           className="preview-note-input"
