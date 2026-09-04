@@ -673,9 +673,7 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
   return (
     <>
       <SectionHeading title="习惯" detail="每天最多 5 个习惯有奖励" />
-      <form
-        className="productivity-form habit-create-form"
-        onSubmit={(event) => {
+      <form className="productivity-form" onSubmit={(event) => {
           event.preventDefault()
           submit()
         }}
@@ -696,14 +694,13 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
             value={mode}
             onChange={(event) => setMode(event.target.value as 'check' | 'count')}
           >
-            <option value="check">打卡（完成 / 未完成）</option>
+            <option value="check">打卡</option>
             <option value="count">累计次数</option>
           </select>
         </label>
 
         {mode === 'check' ? (
-          <fieldset className="habit-form-section">
-            <legend>哪些天要打卡</legend>
+          <>
             <div className="form-grid">
               <label>
                 安排
@@ -751,38 +748,27 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
                 ))}
               </div>
             )}
-            <p className="habit-form-hint">当天点一下打卡，就算完成这一天。</p>
-          </fieldset>
+          </>
         ) : (
-          <fieldset className="habit-form-section">
-            <legend>累计目标</legend>
-            <div className="form-grid">
-              <label>
-                周期
-                <select
-                  value={countPeriod}
-                  onChange={(event) =>
-                    setCountPeriod(event.target.value as HabitCountPeriod)
-                  }
-                >
-                  <option value="day">每天</option>
-                  <option value="week">每周</option>
-                  <option value="month">每月</option>
-                </select>
-              </label>
-              <label>
-                目标次数
-                <NumberField min={1} value={target} onValueChange={setTarget} />
-              </label>
-            </div>
-            <p className="habit-form-hint">
-              {countPeriod === 'day'
-                ? `每天累计 ${target} 次后完成。`
-                : countPeriod === 'week'
-                  ? `本周内任意天累计共 ${target} 次即可，不必每天都做。`
-                  : `本月内任意天累计共 ${target} 次即可。`}
-            </p>
-          </fieldset>
+          <div className="form-grid">
+            <label>
+              周期
+              <select
+                value={countPeriod}
+                onChange={(event) =>
+                  setCountPeriod(event.target.value as HabitCountPeriod)
+                }
+              >
+                <option value="day">每天</option>
+                <option value="week">每周</option>
+                <option value="month">每月</option>
+              </select>
+            </label>
+            <label>
+              目标次数
+              <NumberField min={1} value={target} onValueChange={setTarget} />
+            </label>
+          </div>
         )}
 
         <button
