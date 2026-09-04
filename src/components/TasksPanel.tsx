@@ -11,8 +11,9 @@ import {
   PROJECT_REWARDS,
   habitCompletedOn,
   habitDueOn,
-  habitEntryFor,
+  habitProgressLabel,
   habitSummaryLabel,
+  habitTodayProgressLabel,
   habitWeeklyProgress,
   nextBlockReward,
   nextOpenBlock,
@@ -35,6 +36,7 @@ import {
 } from '../core/plan'
 import type {
   Difficulty,
+  HabitCountPeriod,
   HabitSchedule,
   HabitScheduleType,
   PlanTarget,
@@ -530,14 +532,7 @@ function TimelineRow({
         </strong>
         <span className="muted">
           {item.kind === 'task' && TASK_REWARDS[item.task.difficulty].label}
-          {item.kind === 'habit' && (() => {
-            const entry = habitEntryFor(item.habit)
-            const count = entry?.count ?? 0
-            if (item.habit.mode === 'count') {
-              return `${count}/${item.habit.targetCount} 次 · 习惯`
-            }
-            return count > 0 ? '已打卡 · 习惯' : '打卡 · 习惯'
-          })()}
+          {item.kind === 'habit' && habitTodayProgressLabel(item.habit)}
           {item.kind === 'block' &&
             `${item.project.title} · ${projectProgress(item.project).percent}%`}
         </span>
@@ -634,7 +629,8 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
   const archiveHabit = useGameStore((s) => s.archiveHabit)
   const [title, setTitle] = useState('')
   const [mode, setMode] = useState<'check' | 'count'>('check')
-  const [target, setTarget] = useState(2)
+  const [target, setTarget] = useState(5)
+  const [countPeriod, setCountPeriod] = useState<HabitCountPeriod>('day')
   const [scheduleType, setScheduleType] = useState<HabitScheduleType>('daily')
   const [days, setDays] = useState<number[]>([1, 3, 5])
   const [weeklyTarget, setWeeklyTarget] = useState(3)
@@ -643,16 +639,27 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
 
   function submit() {
     if (!title.trim()) return
-    if (scheduleType === 'selected' && days.length === 0) return
-    const schedule: HabitSchedule = scheduleType === 'selected'
-      ? { type: scheduleType, days }
-      : scheduleType === 'weekly'
-        ? { type: scheduleType, weeklyTarget }
-        : { type: scheduleType }
-    addHabit(title, mode, target, schedule, category)
+    if (mode === 'check' && scheduleType === 'selected' && days.length === 0) return
+    const schedule: HabitSchedule =
+      mode === 'count'
+        ? { type: 'daily' }
+        : scheduleType === 'selected'
+          ? { type: scheduleType, days }
+          : scheduleType === 'weekly'
+            ? { type: scheduleType, weeklyTarget }
+            : { type: scheduleType }
+    addHabit(
+      title,
+      mode,
+      mode === 'count' ? target : 1,
+      schedule,
+      category,
+      mode === 'count' ? countPeriod : undefined,
+    )
     setTitle('')
     setMode('check')
-    setTarget(2)
+    setTarget(5)
+    setCountPeriod('day')
     setScheduleType('daily')
     setDays([1, 3, 5])
     setWeeklyTarget(3)
@@ -662,7 +669,13 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
   return (
     <>
       <SectionHeading title="习惯" detail="每天最多 5 个习惯有奖励" />
-      <form className="productivity-form habit-create-form" onSubmit={(event) => { event.preventDefault(); submit() }}>
+      <form
+        className="productivity-form habit-create-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          submit()
+        }}
+      >
         <label>
           名称
           <input
@@ -673,22 +686,91 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
         </label>
         <CategoryPicker value={category} onChange={setCategory} />
 
-        <fieldset className="habit-form-section">
-          <legend>怎么记</legend>
-          <div className="form-grid">
-            <label>
-              记录方式
-              <select
-                value={mode}
-                onChange={(event) => setMode(event.target.value as 'check' | 'count')}
-              >
-                <option value="check">每天打卡一次</option>
-                <option value="count">每天累计多次</option>
-              </select>
-            </label>
-            {mode === 'count' && (
+        <label>
+          记录方式
+          <select
+            value={mode}
+            onChange={(event) => setMode(event.target.value as 'check' | 'count')}
+          >
+            <option value="check">打卡（完成 / 未完成）</option>
+            <option value="count">累计次数</option>
+          </select>
+        </label>
+
+        {mode === 'check' ? (
+          <fieldset className="habit-form-section">
+            <legend>哪些天要打卡</legend>
+            <div className="form-grid">
               <label>
-                每天要做几次
+                安排
+                <select
+                  value={scheduleType}
+                  onChange={(event) =>
+                    setScheduleType(event.target.value as HabitScheduleType)
+                  }
+                >
+                  <option value="daily">每天</option>
+                  <option value="weekdays">工作日</option>
+                  <option value="selected">指定星期</option>
+                  <option value="weekly">每周完成几天</option>
+                </select>
+              </label>
+              {scheduleType === 'weekly' && (
+                <label>
+                  每周几天
+                  <input
+                    type="number"
+                    min="1"
+                    max="7"
+                    value={weeklyTarget}
+                    onChange={(event) =>
+                      setWeeklyTarget(Math.max(1, Math.min(7, Number(event.target.value))))
+                    }
+                  />
+                </label>
+              )}
+            </div>
+            {scheduleType === 'selected' && (
+              <div className="weekday-picker" aria-label="选择星期">
+                {WEEKDAYS.map((day) => (
+                  <button
+                    type="button"
+                    className={days.includes(day.value) ? 'active' : ''}
+                    key={day.value}
+                    onClick={() =>
+                      setDays((current) =>
+                        current.includes(day.value)
+                          ? current.filter((value) => value !== day.value)
+                          : [...current, day.value],
+                      )
+                    }
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="habit-form-hint">当天点一下打卡，就算完成这一天。</p>
+          </fieldset>
+        ) : (
+          <fieldset className="habit-form-section">
+            <legend>累计目标</legend>
+            <div className="form-grid">
+              <label>
+                周期
+                <select
+                  value={countPeriod}
+                  onChange={(event) =>
+                    setCountPeriod(event.target.value as HabitCountPeriod)
+                  }
+                >
+                  <option value="day">每天</option>
+                  <option value="week">每周</option>
+                  <option value="month">每月</option>
+                </select>
+              </label>
+              <label>
+                目标次数
                 <input
                   type="number"
                   min="1"
@@ -696,77 +778,22 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
                   onChange={(event) => setTarget(Math.max(1, Number(event.target.value)))}
                 />
               </label>
-            )}
-          </div>
-          <p className="habit-form-hint">
-            {mode === 'count'
-              ? '当天达到次数后，才算完成这一天。'
-              : '当天点一下打卡，就算完成。'}
-          </p>
-        </fieldset>
-
-        <fieldset className="habit-form-section">
-          <legend>哪些天要做</legend>
-          <div className="form-grid">
-            <label>
-              安排
-              <select
-                value={scheduleType}
-                onChange={(event) => setScheduleType(event.target.value as HabitScheduleType)}
-              >
-                <option value="daily">每天</option>
-                <option value="weekdays">工作日</option>
-                <option value="selected">指定星期</option>
-                <option value="weekly">每周完成几天</option>
-              </select>
-            </label>
-            {scheduleType === 'weekly' && (
-              <label>
-                每周几天
-                <input
-                  type="number"
-                  min="1"
-                  max="7"
-                  value={weeklyTarget}
-                  onChange={(event) =>
-                    setWeeklyTarget(Math.max(1, Math.min(7, Number(event.target.value))))
-                  }
-                />
-              </label>
-            )}
-          </div>
-          {scheduleType === 'selected' && (
-            <div className="weekday-picker" aria-label="选择星期">
-              {WEEKDAYS.map((day) => (
-                <button
-                  type="button"
-                  className={days.includes(day.value) ? 'active' : ''}
-                  key={day.value}
-                  onClick={() =>
-                    setDays((current) =>
-                      current.includes(day.value)
-                        ? current.filter((value) => value !== day.value)
-                        : [...current, day.value],
-                    )
-                  }
-                >
-                  {day.label}
-                </button>
-              ))}
             </div>
-          )}
-          <p className="habit-form-hint">
-            {scheduleType === 'weekly'
-              ? '不限星期几，本周完成指定天数即可。'
-              : scheduleType === 'selected'
-                ? days.length === 0
-                  ? '请至少选一天。'
-                  : '只在选中的星期出现在今天。'
-                : '与「怎么记」分开：这里只决定哪些天需要完成。'}
-          </p>
-        </fieldset>
+            <p className="habit-form-hint">
+              {countPeriod === 'day'
+                ? `每天累计 ${target} 次后完成。`
+                : countPeriod === 'week'
+                  ? `本周内任意天累计共 ${target} 次即可，不必每天都做。`
+                  : `本月内任意天累计共 ${target} 次即可。`}
+            </p>
+          </fieldset>
+        )}
 
-        <button className="btn" type="submit" disabled={scheduleType === 'selected' && days.length === 0}>
+        <button
+          className="btn"
+          type="submit"
+          disabled={mode === 'check' && scheduleType === 'selected' && days.length === 0}
+        >
           <GameIcon name="plus" />
           添加习惯
         </button>
@@ -806,7 +833,7 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
               <ProgressBar
                 value={week.completed}
                 max={week.target}
-                label={`本周完成 ${week.completed}/${week.target} 天`}
+                label={habitProgressLabel(habit)}
               />
               <button
                 className="quiet-remove"
@@ -822,6 +849,7 @@ function HabitsView({ rewardedHabitIds }: { rewardedHabitIds: string[] }) {
     </>
   )
 }
+
 
 function ProjectsView() {
   const projects = useGameStore((s) => s.projects)

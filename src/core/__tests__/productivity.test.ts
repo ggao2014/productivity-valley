@@ -3,7 +3,9 @@ import { useGameStore } from '../gameStore'
 import {
   PROJECT_REWARDS,
   crossedMilestones,
+  habitCompletedOn,
   habitDueOn,
+  habitPeriodCount,
   habitScheduleLabel,
   habitSummaryLabel,
   habitWeeklyProgress,
@@ -49,16 +51,25 @@ describe('habit schedules and rewards', () => {
     expect(habitWeeklyProgress(weekly, now)).toEqual({ completed: 0, target: 2 })
   })
 
-  it('labels schedule as days and mode as daily counts without mixing 次', () => {
+  it('labels check schedules in days and count goals as period totals', () => {
     expect(habitScheduleLabel({ type: 'weekly', weeklyTarget: 3 })).toBe('每周 3 天')
     expect(habitScheduleLabel({ type: 'selected', days: [1, 3, 0] })).toBe('周一、三、日')
     expect(
       habitSummaryLabel({
         mode: 'count',
-        targetCount: 5,
-        schedule: { type: 'weekly', weeklyTarget: 3 },
+        targetCount: 10,
+        schedule: { type: 'daily' },
+        countPeriod: 'week',
       }),
-    ).toBe('每周 3 天 · 每天 5 次')
+    ).toBe('每周 10 次')
+    expect(
+      habitSummaryLabel({
+        mode: 'count',
+        targetCount: 5,
+        schedule: { type: 'daily' },
+        countPeriod: 'month',
+      }),
+    ).toBe('每月 5 次')
     expect(
       habitSummaryLabel({
         mode: 'check',
@@ -66,6 +77,27 @@ describe('habit schedules and rewards', () => {
         schedule: { type: 'daily' },
       }),
     ).toBe('每天 · 打卡')
+  })
+
+  it('accumulates count habits across a week or month period', () => {
+    useGameStore.getState().addHabit('喝水', 'count', 5, { type: 'daily' }, 'health', 'week')
+    const id = useGameStore.getState().habits[0].id
+    useGameStore.getState().runDailyIfNeeded()
+
+    useGameStore.getState().adjustHabit(id, 2)
+    expect(habitPeriodCount(useGameStore.getState().habits[0], now)).toBe(2)
+    expect(habitCompletedOn(useGameStore.getState().habits[0])).toBe(false)
+    expect(habitWeeklyProgress(useGameStore.getState().habits[0], now)).toEqual({
+      completed: 2,
+      target: 5,
+    })
+
+    vi.setSystemTime(new Date(2026, 6, 28, 10))
+    useGameStore.getState().adjustHabit(id, 3)
+    const habit = useGameStore.getState().habits[0]
+    expect(habitPeriodCount(habit, new Date(2026, 6, 28, 10))).toBe(5)
+    expect(habitCompletedOn(habit, '2026-07-28')).toBe(true)
+    expect(habit.entries.find((entry) => entry.dayKey === '2026-07-28')?.awardedCoins).toBe(8)
   })
 
   it('locks the first five reward-eligible habits and pays daily plus weekly reward once', () => {

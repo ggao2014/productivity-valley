@@ -87,7 +87,12 @@ function collectActivity(input: {
 
   for (const habit of input.habits) {
     for (const entry of habit.entries) {
-      if (entry.count < habit.targetCount) continue
+      const period = habit.mode === 'count' ? habit.countPeriod ?? 'day' : 'day'
+      if (habit.mode === 'count' && period !== 'day') {
+        if (!entry.completedAt) continue
+      } else if (entry.count < habit.targetCount) {
+        continue
+      }
       input.onMark(habit.category, 1, entry.dayKey)
     }
   }

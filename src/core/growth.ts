@@ -30,11 +30,17 @@ export function completedTaskCount(tasks: Task[]): number {
 
 export function valleyGrowthPoints(state: GameState): number {
   const tasks = completedTaskCount(state.tasks)
-  const habitDays = state.habits.reduce(
-    (total, habit) =>
-      total + habit.entries.filter((entry) => entry.count >= habit.targetCount).length,
-    0,
-  )
+  const habitDays = state.habits.reduce((total, habit) => {
+    const period = habit.mode === 'count' ? habit.countPeriod ?? 'day' : 'day'
+    if (habit.mode === 'count' && period !== 'day') {
+      return (
+        total + habit.entries.filter((entry) => Boolean(entry.completedAt)).length
+      )
+    }
+    return (
+      total + habit.entries.filter((entry) => entry.count >= habit.targetCount).length
+    )
+  }, 0)
   const projectBlocks = state.projects.reduce(
     (total, project) => total + project.blocks.filter((block) => block.done).length,
     0,
